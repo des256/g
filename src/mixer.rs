@@ -1,4 +1,4 @@
-// engine
+// Steel Engine audio mixer
 // by Desmond Germans, 2020
 
 use e::*;

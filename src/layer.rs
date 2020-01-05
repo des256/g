@@ -1,4 +1,4 @@
-// engine video layer
+// Steel Engine video layer
 // by Desmond Germans, 2020
 
 use e::*;

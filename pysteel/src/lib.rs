@@ -1,4 +1,4 @@
-extern crate engine;
+extern crate steel;
 #[macro_use]
 extern crate cpython;
 
@@ -7,7 +7,7 @@ use std::cell::RefCell;
 use cpython::{Python,PyResult};
 
 py_class!(class Synth |py| {
-    data obj: e::audio::Synth;
+    data obj: steel::Synth;
 });
 
 fn py_create_dogma(py: Python) -> PyResult<Synth> {

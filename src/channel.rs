@@ -1,4 +1,4 @@
-// engine audio channel
+// Steel Engine audio channel
 // by Desmond Germans, 2020
 
 use e::*;

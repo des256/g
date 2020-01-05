@@ -1,13 +1,13 @@
 [package]
-name = "pyengine"
+name = "pysteel"
 version = "0.1.0"
 authors = ["Desmond Germans <desmond@germansmedia.nl>"]
 edition = "2018"
 
 [lib]
-name = "pyengine"
+name = "pysteel"
 crate-type = ["cdylib"]
 
 [dependencies]
-engine = { path = "../engine", version = "0.1" }
+steel = { path = "../", version = "0.1" }
 cpython = { version = "0.2", features = ["extension-module"] }
