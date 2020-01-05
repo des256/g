@@ -1,0 +1,7 @@
+/target/
+Cargo.lock
+**/*.rs.bk
+/build/
+/dist/
+/pye.egg-info/
+pye.so
