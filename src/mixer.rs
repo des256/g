@@ -1,4 +1,4 @@
-// Steel Engine audio mixer
+// Kvasir Engine audio mixer
 // by Desmond Germans, 2020
 
 use e::*;

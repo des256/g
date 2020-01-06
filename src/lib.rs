@@ -1,8 +1,8 @@
-// Steel Engine
+// Kvasir Engine
 // by Desmond Germans, 2020
 
-mod steel;
-pub use steel::*;
+mod kvasir;
+pub use kvasir::*;
 
 mod layer;
 pub use layer::*;

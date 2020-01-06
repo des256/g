@@ -1,4 +1,4 @@
-# Steel Engine - Python Interface
+# Kvasir Engine - Python Interface
 
 ## Build Instructions
 
@@ -17,7 +17,7 @@ python3 setup.py bdist_wheel
 And finally, install this package on the local machine:
 
 ```
-python3 -m pip install dist/pysteel-0.1-py3-none-all.whl
+python3 -m pip install dist/pykvasir-0.1-py3-none-all.whl
 ```
 
 ## API

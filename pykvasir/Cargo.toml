@@ -1,11 +1,11 @@
 [package]
-name = "pysteel"
+name = "pykvasir"
 version = "0.1.0"
 authors = ["Desmond Germans <desmond@germansmedia.nl>"]
 edition = "2018"
 
 [lib]
-name = "pysteel"
+name = "pykvasir"
 crate-type = ["cdylib"]
 
 [dependencies]

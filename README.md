@@ -1,3 +1,3 @@
-# Steel
+# Kvasir
 
 Game engine with tools.

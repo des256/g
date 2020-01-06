@@ -1,4 +1,4 @@
-// Steel Engine audio channel
+// Kvasir Engine audio channel
 // by Desmond Germans, 2020
 
 use e::*;

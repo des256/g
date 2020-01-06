@@ -3,5 +3,5 @@ Cargo.lock
 **/*.rs.bk
 /build/
 /dist/
-/pysteel.egg-info/
-pysteel.so
+/pykvasir.egg-info/
+pykvasir.so

@@ -327,3 +327,7 @@ Replacing all the quads in a window with one upload function is faulty, because 
 # 4.1.2020
 
 Decided to focus back on games. This UI business is going to become a huge drain (it's already taking too long to even get started), and I really wanted to focus on something else instead. I will leave E generally in tact, move the UI-specific part to `try`, and go focus on the engine. Done. E is now only a very OS-near layer with utilities, and the game engine will do the rest. The engine needs a name, though...
+
+# 6.1.2020
+
+Engine is renamed to Kvasir, after the Norse god of spreading wisdom.

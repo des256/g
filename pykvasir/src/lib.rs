@@ -1,4 +1,4 @@
-extern crate steel;
+extern crate kvasir;
 #[macro_use]
 extern crate cpython;
 
