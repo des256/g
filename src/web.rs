@@ -1,4 +1,4 @@
-// Kvasir - System Interface - MacOS
+// Kvasir - Web
 // Desmond Germans, 2020
 
 pub struct Video {

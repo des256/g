@@ -1,4 +1,4 @@
-// Kvasir - Image - PBM
+// Kvasir - TIFF
 // Desmond Germans, 2020
 
 use crate::*;

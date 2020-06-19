@@ -1,4 +1,4 @@
-// Kvasir - System Interface - Windows
+// Kvasir - Windows
 // Desmond Germans, 2020
 
 pub struct Video {

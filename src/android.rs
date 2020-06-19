@@ -1,4 +1,4 @@
-// Kvasir - System Interface - Android
+// Kvasir - Android
 // Desmond Germans, 2020
 
 pub struct Video {

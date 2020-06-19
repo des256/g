@@ -1,4 +1,4 @@
-// Kvasir - Image - PNG
+// Kvasir - PNG
 // Desmond Germans, 2020
 
 use crate::*;

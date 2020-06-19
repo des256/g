@@ -1,4 +1,4 @@
-// Kvasir - Image - GIF
+// Kvasir - JPEG
 // Desmond Germans, 2020
 
 use crate::*;

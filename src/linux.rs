@@ -1,4 +1,4 @@
-// Kvasir - System Interface - Linux
+// Kvasir - Linux
 // Desmond Germans, 2020
 
 use std::ffi;

@@ -1,4 +1,4 @@
-// Kvasir - System Interface - iOS
+// Kvasir - iOS
 // Desmond Germans, 2020
 
 pub struct Video {

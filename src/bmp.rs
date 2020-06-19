@@ -1,4 +1,4 @@
-// Kvasir - Image - BMP
+// Kvasir - BMP
 // Desmond Germans, 2020
 
 use crate::*;

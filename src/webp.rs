@@ -1,4 +1,4 @@
-// Kvasir - Image - TGA
+// Kvasir - WEBP
 // Desmond Germans, 2020
 
 use crate::*;

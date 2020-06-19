@@ -1,4 +1,4 @@
-// Kvasir - System Interface - OpenGL
+// Kvasir - OpenGL 4.5
 // Desmond Germans, 2020
 
 mod shader;
