@@ -1,0 +1,29 @@
+[package]
+name = "kvasir"
+version = "0.1.0"
+authors = ["Desmond Germans <desmond@germansmedia.nl>"]
+edition = "2018"
+
+[lib]
+name = "kvasir"
+crate-type = ["rlib"]
+
+[profile.dev]
+opt-level = 0
+debug = true
+lto = true
+codegen-units = 14
+
+[profile.release]
+opt-level = 2
+debug = false
+lto = false
+codegen-units = 14
+
+# Linux generic
+
+[dependencies]
+x11 = { version = "2.18.1", features = ["xlib","glx"] }
+xcb = { version = "0.8", features = ["xlib_xcb","dri2"] }
+gl = { version = "0.14.0" }
+alsa = { version = "0.3.0" }

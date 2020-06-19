@@ -1,17 +1,17 @@
-// Kvasir Engine
-// by Desmond Germans, 2020
+// Kvasir
+// Desmond Germans, 2020
 
-mod kvasir;
-pub use kvasir::*;
+mod sys;
+pub use sys::*;
 
-mod layer;
-pub use layer::*;
+mod image;
+pub use image::*;
 
-mod channel;
-pub use channel::*;
+mod scene;
+pub use scene::*;
 
-mod track;
-pub use track::*;
+mod sound;
+pub use sound::*;
 
-mod mixer;
-pub use mixer::*;
+mod rpg;
+pub use rpg::*;
