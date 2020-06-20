@@ -6,15 +6,9 @@ use std::os::raw::c_void;
 use std::os::raw::c_int;
 use std::ffi::CString;
 use std::mem::transmute;
-use crate::Layer;
-use crate::Framebuffer;
 use crate::VideoConfig;
 use crate::WindowConfig;
-use crate::FramebufferConfig;
 use xcb::base::Connection;
-use crate::Shader;
-use gl::types::GLuint;
-use gl::types::GLfloat;
 use xcb::base::EventQueueOwner;
 use x11::glx::*;
 use std::ffi::CStr;
@@ -22,12 +16,12 @@ use xcb::xproto::*;
 use x11::glx::arb::*;
 use std::ptr::null_mut;
 use crate::Event;
-use gl::types::GLvoid;
-use crate::SetUniform;
 use xcb::base::cast_event;
 use crate::Button;
 use crate::Wheel;
 use xcb::base::GenericEvent;
+use crate::VideoError;
+use crate::OpenGLContext;
 
 type GlXCreateContextAttribsARBProc = unsafe extern "C" fn(
     dpy: *mut Display,
@@ -57,7 +51,7 @@ pub struct Video {
     window_height: u32,
     context: GLXContext,
     wm_delete_window: u32,
-    opengl: OpenGLContext,
+    pub opengl: OpenGLContext,
 }
 
 impl Video {
@@ -227,7 +221,7 @@ impl Video {
 
         let opengl = match OpenGLContext::new(config.framebuffer) {
             Ok(opengl) => opengl,
-            Err(error) => { return Err(VideoError::Generic) },
+            Err(_) => { return Err(VideoError::Generic) },
         };
 
         Ok(Video {
@@ -252,7 +246,7 @@ impl Video {
         match r {
             EXPOSE => {
                 unsafe { glXMakeCurrent(self.connection.get_raw_dpy(),self.window as u64,self.context) };
-                self.opengl.render();
+                self.opengl.render(self.window_width,self.window_height);
                 unsafe { glXSwapBuffers(self.connection.get_raw_dpy(),self.window as XID) };
             },
             KEY_PRESS => {
