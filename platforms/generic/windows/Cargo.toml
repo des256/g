@@ -1,11 +1,11 @@
 [package]
-name = "grondslag"
+name = "g"
 version = "0.1.0"
 authors = ["Desmond Germans <desmond@germansmedia.nl>"]
 edition = "2018"
 
 [lib]
-name = "grondslag"
+name = "g"
 crate-type = ["rlib"]
 
 [profile.dev]
@@ -22,15 +22,6 @@ codegen-units = 14
 
 # Windows generic
 
-[target]
-libc = "*"
-
-[features]
-ui = []
-opengl = []
-gles = []
-vulkan = []
-direct3d = []
-directsound = []
-
-default = ["ui","opengl"]
+[dependencies]
+winapi = { version = "*", features = ["winuser","libloaderapi"] }
+gl = "*"

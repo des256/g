@@ -1,11 +1,11 @@
 [package]
-name = "kvasir"
+name = "g"
 version = "0.1.0"
 authors = ["Desmond Germans <desmond@germansmedia.nl>"]
 edition = "2018"
 
 [lib]
-name = "kvasir"
+name = "g"
 crate-type = ["rlib"]
 
 [profile.dev]

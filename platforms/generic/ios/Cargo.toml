@@ -1,11 +1,11 @@
 [package]
-name = "grondslag"
+name = "g"
 version = "0.1.0"
 authors = ["Desmond Germans <desmond@germansmedia.nl>"]
 edition = "2018"
 
 [lib]
-name = "grondslag"
+name = "g"
 crate-type = ["rlib"]
 
 [profile.dev]
@@ -22,12 +22,4 @@ codegen-units = 14
 
 # iOS Generic
 
-[target]
-libc = "*"
-
-[features]
-default = ["ui","metal"]
-ui = []
-gles = []
-vulkan = []
-metal = []
+[dependencies]

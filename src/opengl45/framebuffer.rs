@@ -1,20 +1,19 @@
-// Kvasir - System Interface - OpenGL - Framebuffer
+// G - OpenGL - Framebuffer
 // Desmond Germans, 2020
 
-extern crate gl;
-use gl::types;
+use gl::types::GLuint;
 
 pub struct Framebuffer {
-    fbo: types::GLuint,
-    pub tex: types::GLuint,
+    fbo: GLuint,
+    pub tex: GLuint,
     pub width: u32,
     pub height: u32,
 }
 
 impl Framebuffer {
-    pub fn new(width: u32,height: u32) -> Framebuffer {
-        let mut fbo: types::GLuint = 0;
-        let mut tex: types::GLuint = 0;
+    pub fn new(width: u32,height: u32) -> Option<Framebuffer> {
+        let mut fbo: GLuint = 0;
+        let mut tex: GLuint = 0;
         unsafe {
             gl::GenFramebuffers(1,&mut fbo);
             gl::BindFramebuffer(gl::FRAMEBUFFER,fbo);
@@ -27,15 +26,15 @@ impl Framebuffer {
             gl::TexStorage2D(gl::TEXTURE_2D,1,gl::RGBA8,width as i32,height as i32);
             gl::FramebufferTexture(gl::FRAMEBUFFER,gl::COLOR_ATTACHMENT0,tex,0);
             if gl::CheckFramebufferStatus(gl::FRAMEBUFFER) != gl::FRAMEBUFFER_COMPLETE {
-                panic!("(linux) framebuffer incomplete");
+                return None;
             }
         }
-        Framebuffer {
+        Some(Framebuffer {
             fbo: fbo,
             tex: tex,
             width: width,
             height: height,
-        }
+        })
     }
 
     pub fn bind(&self) {

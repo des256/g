@@ -1,7 +1,7 @@
-// Kvasir - BMP
+// G - BMP
 // Desmond Germans, 2020
 
-use crate::*;
+use crate::Image;
 
 #[derive(Clone,Copy)]
 enum Type {
@@ -756,7 +756,7 @@ pub fn encode(image: &Image) -> Option<Vec<u8>> {
     dst.push32(0);  // 118
     for y in 0..image.height {
         for x in 0..image.width {
-            dst.push32(u32::from(image.pixel(x as i32,(image.height - y - 1) as i32)));  // 122..
+            dst.push32(image.pixel(x as i32,(image.height - y - 1) as i32));  // 122..
         }
     }
     Some(dst)

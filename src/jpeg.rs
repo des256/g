@@ -1,7 +1,7 @@
-// Kvasir - JPEG
+// G - JPEG
 // Desmond Germans, 2020
 
-use crate::*;
+use crate::Image;
 
 #[derive(Copy,Clone)]
 enum Type {
@@ -59,7 +59,7 @@ const C7PC1: i32 = C7 + C1;
 const C5PC3: i32 = C5 + C3;
 const C7MC1: i32 = C7 - C1;
 const C5MC3: i32 = C5 - C3;
-const C0S: i32 = (C0 >> 1);
+const C0S: i32 = C0 >> 1;
 const C6PC2: i32 = C6 + C2;
 const C6MC2: i32 = C6 - C2;
 

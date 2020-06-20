@@ -1,31 +1,19 @@
-// Kvasir - Linux
+// G - Linux
 // Desmond Germans, 2020
 
-use std::ffi;
-use std::ptr;
-use std::os::raw;
-
-extern crate x11;
-
-use x11::xlib;
-use x11::glx;
-use gl::types;
-
-use crate::*;
-
 type GlXCreateContextAttribsARBProc = unsafe extern "C" fn(
-    dpy: *mut xlib::Display,
-    fbc: glx::GLXFBConfig,
-    share_context: glx::GLXContext,
-    direct: xlib::Bool,
-    attribs: *const raw::c_int
-) -> glx::GLXContext;
+    dpy: *mut Display,
+    fbc: GLXFBConfig,
+    share_context: GLXContext,
+    direct: Bool,
+    attribs: *const c_int
+) -> GLXContext;
 
-fn load_function(name: &str) -> *mut raw::c_void {
-    let newname = ffi::CString::new(name).unwrap();
-    let pointer: *mut raw::c_void = unsafe {
-        std::mem::transmute(
-            glx::glXGetProcAddress(newname.as_ptr() as *const u8)
+fn load_function(name: &str) -> *mut c_void {
+    let newname = CString::new(name).unwrap();
+    let pointer: *mut c_void = unsafe {
+        transmute(
+            glXGetProcAddress(newname.as_ptr() as *const u8)
         )
     };
     if pointer.is_null() {
@@ -34,82 +22,21 @@ fn load_function(name: &str) -> *mut raw::c_void {
     pointer
 }
 
-pub enum WindowConfig {
-    Standard,  // 640x360
-    High,  // 1280x720
-}
-
-pub enum FramebufferConfig {
-    Standard,  // 640x360
-    Low,  // 320x180
-}
-
-pub struct VideoConfig {
-    pub window: WindowConfig,
-    pub framebuffer: FramebufferConfig,
-}
-
 pub struct Video {
     pub layers: Vec<Layer>,
     framebuffer: Framebuffer,
-    connection: xcb::Connection,
+    connection: Connection,
     window: u32,
     window_width: u32,
     window_height: u32,
-    context: glx::GLXContext,
+    context: GLXContext,
     wm_delete_window: u32,
     layer_shader: Shader,
     final_shader: Shader,
-    pub quad_vbo: types::GLuint,
+    pub quad_vbo: GLuint,
 }
 
-pub enum Button {
-    Left,
-    Middle,
-    Right,
-}
-
-impl std::fmt::Display for Button {
-    fn fmt(&self,f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Button::Left => { write!(f,"left") },
-            Button::Middle => { write!(f,"middle") },
-            Button::Right => { write!(f,"right") },
-        }
-    }
-}
-
-pub enum Wheel {
-    Up,
-    Down,
-    Left,
-    Right,
-}
-
-impl std::fmt::Display for Wheel {
-    fn fmt(&self,f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Wheel::Up => { write!(f,"up") },
-            Wheel::Down => { write!(f,"down") },
-            Wheel::Left => { write!(f,"left") },
-            Wheel::Right => { write!(f,"right") },
-        }
-    }
-}
-
-pub enum Event {
-    KeyPress(u8),
-    KeyRelease(u8),
-    MousePress(i32,i32,Button),
-    MouseRelease(i32,i32,Button),
-    MouseWheel(Wheel),
-    MouseMove(i32,i32),
-    Paint(i32,i32,i32,i32),
-    Geometry(i32,i32,i32,i32),
-    Close,
-}
-
-static QUAD: [types::GLfloat; 8] = [
+static QUAD: [GLfloat; 8] = [
     0.0,0.0,
     1.0,0.0,
     1.0,1.0,
@@ -129,22 +56,22 @@ pub enum VideoError {
 }
 
 impl Video {
-    pub fn new(config: VideoConfig) -> std::result::Result<Video,VideoError> {
+    pub fn new(config: VideoConfig) -> Result<Video,VideoError> {
 
-        let connection = match xcb::Connection::connect_with_xlib_display() {
+        let connection = match Connection::connect_with_xlib_display() {
             Ok((connection,_)) => connection,
             Err(_) => { return Err(VideoError::X11Error); },
         };
-        connection.set_event_queue_owner(xcb::EventQueueOwner::Xcb);
+        connection.set_event_queue_owner(EventQueueOwner::Xcb);
 
         let (visual_screen,visualid,depth,fbconfig,glx_create_context_attribs) = {
-            let mut glxmaj: raw::c_int = 0;
-            let mut glxmin: raw::c_int = 0;
+            let mut glxmaj: c_int = 0;
+            let mut glxmin: c_int = 0;
             unsafe {
-                if glx::glXQueryVersion(
+                if glXQueryVersion(
                     connection.get_raw_dpy(),
-                    &mut glxmaj as *mut raw::c_int,
-                    &mut glxmin as *mut raw::c_int
+                    &mut glxmaj as *mut c_int,
+                    &mut glxmin as *mut c_int
                 ) == 0 {
                     return Err(VideoError::GLXError);
                 }
@@ -153,40 +80,40 @@ impl Video {
                 return Err(VideoError::GLXVersionMismatch);
             }
             let attribs = [
-                glx::GLX_X_RENDERABLE,  1,
-                glx::GLX_DRAWABLE_TYPE, glx::GLX_WINDOW_BIT,
-                glx::GLX_RENDER_TYPE,   glx::GLX_RGBA_BIT,
-                glx::GLX_X_VISUAL_TYPE, glx::GLX_TRUE_COLOR,
-                glx::GLX_RED_SIZE,      8,
-                glx::GLX_GREEN_SIZE,    8,
-                glx::GLX_BLUE_SIZE,     8,
-                glx::GLX_ALPHA_SIZE,    8,
-                glx::GLX_DEPTH_SIZE,    24,
-                glx::GLX_STENCIL_SIZE,  8,
-                glx::GLX_DOUBLEBUFFER,  1,
+                GLX_X_RENDERABLE,  1,
+                GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
+                GLX_RENDER_TYPE,   GLX_RGBA_BIT,
+                GLX_X_VISUAL_TYPE, GLX_TRUE_COLOR,
+                GLX_RED_SIZE,      8,
+                GLX_GREEN_SIZE,    8,
+                GLX_BLUE_SIZE,     8,
+                GLX_ALPHA_SIZE,    8,
+                GLX_DEPTH_SIZE,    24,
+                GLX_STENCIL_SIZE,  8,
+                GLX_DOUBLEBUFFER,  1,
                 0,
             ];
-            let mut fbcount: raw::c_int = 0;
+            let mut fbcount: c_int = 0;
             let fbconfigs = unsafe {
-                glx::glXChooseFBConfig(
+                glXChooseFBConfig(
                     connection.get_raw_dpy(),
                     0,
                     attribs.as_ptr(),
-                    &mut fbcount as *mut raw::c_int
+                    &mut fbcount as *mut c_int
                 )
             };
             if fbcount == 0 {
                 return Err(VideoError::NoSuitableConfig);
             }
             let fbconfig = unsafe { *fbconfigs };
-            unsafe { xlib::XFree(fbconfigs as *mut raw::c_void); }
-            let visual = unsafe { glx::glXGetVisualFromFBConfig(connection.get_raw_dpy(),fbconfig) };
+            unsafe { XFree(fbconfigs as *mut c_void); }
+            let visual = unsafe { glXGetVisualFromFBConfig(connection.get_raw_dpy(),fbconfig) };
             let screen = unsafe { (*visual).screen };
             let visual_screen = connection.get_setup().roots().nth(screen as usize).unwrap();
             let depth = unsafe { (*visual).depth };
             let visualid = unsafe { (*visual).visualid };
             let extensions = unsafe {
-                ffi::CStr::from_ptr(glx::glXQueryExtensionsString(connection.get_raw_dpy(),screen))
+                CStr::from_ptr(glXQueryExtensionsString(connection.get_raw_dpy(),screen))
             }.to_str().unwrap();
             let mut found = false;
             for extension in extensions.split(" ") {
@@ -199,13 +126,13 @@ impl Video {
                 return Err(VideoError::MissingGLXARBCreateContext);
             }
             let glx_create_context_attribs: GlXCreateContextAttribsARBProc = unsafe {
-                std::mem::transmute(load_function("glXCreateContextAttribsARB"))
+                transmute(load_function("glXCreateContextAttribsARB"))
             };
             (visual_screen,visualid,depth,fbconfig,glx_create_context_attribs)
         };
 
-        let protocols_com = xcb::intern_atom(&connection,false,"WM_PROTOCOLS");
-        let delete_window_com = xcb::intern_atom(&connection,false,"WM_DELETE_WINDOW");
+        let protocols_com = intern_atom(&connection,false,"WM_PROTOCOLS");
+        let delete_window_com = intern_atom(&connection,false,"WM_DELETE_WINDOW");
         let wm_protocols = match protocols_com.get_reply() {
             Ok(protocols) => protocols.atom(),
             Err(_) => { return Err(VideoError::MissingWMProtocols); },
@@ -218,24 +145,24 @@ impl Video {
         let rootwindow = visual_screen.root();
         let window = connection.generate_id();
         let colormap = connection.generate_id();
-        xcb::create_colormap(
+        create_colormap(
             &connection,
-            xcb::COLORMAP_ALLOC_NONE as u8,
+            COLORMAP_ALLOC_NONE as u8,
             colormap,
             rootwindow,
             visualid as u32
         );
         let values = [
-            (xcb::CW_EVENT_MASK,
-                xcb::EVENT_MASK_EXPOSURE
-                | xcb::EVENT_MASK_KEY_PRESS
-                | xcb::EVENT_MASK_KEY_RELEASE
-                | xcb::EVENT_MASK_BUTTON_PRESS
-                | xcb::EVENT_MASK_BUTTON_RELEASE
-                | xcb::EVENT_MASK_POINTER_MOTION
-                | xcb::EVENT_MASK_STRUCTURE_NOTIFY
+            (CW_EVENT_MASK,
+                EVENT_MASK_EXPOSURE
+                | EVENT_MASK_KEY_PRESS
+                | EVENT_MASK_KEY_RELEASE
+                | EVENT_MASK_BUTTON_PRESS
+                | EVENT_MASK_BUTTON_RELEASE
+                | EVENT_MASK_POINTER_MOTION
+                | EVENT_MASK_STRUCTURE_NOTIFY
             ),
-            (xcb::CW_COLORMAP,colormap),
+            (CW_COLORMAP,colormap),
         ];
         let (window_width,window_height) = match config.window {
             WindowConfig::Standard => {
@@ -245,50 +172,50 @@ impl Video {
                 (1280,720)
             }
         };
-        xcb::create_window(
+        create_window(
             &connection,
             depth as u8,
             window,
             rootwindow,
             0,0,window_width,window_height,
             0,
-            xcb::WINDOW_CLASS_INPUT_OUTPUT as u16,
+            WINDOW_CLASS_INPUT_OUTPUT as u16,
             visualid as u32,
             &values
         );
         unsafe {
-            xcb::map_window(&connection,window);
+            map_window(&connection,window);
             connection.flush();
-            xlib::XSync(connection.get_raw_dpy(),xlib::False);
+            XSync(connection.get_raw_dpy(),False);
         }
 
         let protocol_set = [wm_delete_window];
-        xcb::change_property(&connection,xcb::PROP_MODE_REPLACE as u8,window,wm_protocols,xcb::ATOM_ATOM,32,&protocol_set);
+        change_property(&connection,PROP_MODE_REPLACE as u8,window,wm_protocols,ATOM_ATOM,32,&protocol_set);
 
         let context = {
-            let context_attribs: [raw::c_int; 5] = [
-                glx::arb::GLX_CONTEXT_MAJOR_VERSION_ARB as raw::c_int,4,
-                glx::arb::GLX_CONTEXT_MINOR_VERSION_ARB as raw::c_int,5,
+            let context_attribs: [c_int; 5] = [
+                GLX_CONTEXT_MAJOR_VERSION_ARB as c_int,4,
+                GLX_CONTEXT_MINOR_VERSION_ARB as c_int,5,
                 0,
             ];
             let context = unsafe {
                 glx_create_context_attribs(
                     connection.get_raw_dpy(),
                     fbconfig,
-                    std::ptr::null_mut(),
-                    xlib::True,
-                    &context_attribs[0] as *const raw::c_int
+                    null_mut(),
+                    True,
+                    &context_attribs[0] as *const c_int
                 )
             };
             connection.flush();
-            unsafe { xlib::XSync(connection.get_raw_dpy(),xlib::False) };
+            unsafe { XSync(connection.get_raw_dpy(),False) };
             if context.is_null() {
                 return Err(VideoError::OpenGLError);
             }
-            if unsafe { glx::glXIsDirect(connection.get_raw_dpy(),context) } == 0 {
+            if unsafe { glXIsDirect(connection.get_raw_dpy(),context) } == 0 {
                 return Err(VideoError::OpenGLIndirect);
             }
-            unsafe { glx::glXMakeCurrent(connection.get_raw_dpy(),window as xlib::XID,context) };
+            unsafe { glXMakeCurrent(connection.get_raw_dpy(),window as XID,context) };
             gl::load_with(|symbol| load_function(&symbol));
             context
         };
@@ -350,7 +277,7 @@ impl Video {
         unsafe {
             gl::GenBuffers(1,&mut quad_vbo);
             gl::BindBuffer(gl::ARRAY_BUFFER,quad_vbo);
-            gl::BufferData(gl::ARRAY_BUFFER,32,std::mem::transmute(&QUAD[0]),gl::STATIC_DRAW);
+            gl::BufferData(gl::ARRAY_BUFFER,32,transmute(&QUAD[0]),gl::STATIC_DRAW);
         }
 
         Ok(Video {
@@ -369,8 +296,8 @@ impl Video {
     }
 
     pub fn set_window_title(&self,title: &str) {
-        let cs = std::ffi::CString::new(title).unwrap();
-        xcb::change_property(&self.connection,xcb::PROP_MODE_REPLACE as u8,self.window,xcb::ATOM_WM_NAME,xcb::ATOM_STRING,8,cs.as_bytes());
+        let cs = CString::new(title).unwrap();
+        change_property(&self.connection,PROP_MODE_REPLACE as u8,self.window,ATOM_WM_NAME,ATOM_STRING,8,cs.as_bytes());
         self.connection.flush();
     }
 
@@ -378,9 +305,9 @@ impl Video {
         while let Some(xcb_event) = self.connection.poll_for_event() {
             let r = xcb_event.response_type() & !0x80;
             match r {
-                xcb::EXPOSE => {
+                EXPOSE => {
                     unsafe {
-                        glx::glXMakeCurrent(self.connection.get_raw_dpy(),self.window as u64,self.context);
+                        glXMakeCurrent(self.connection.get_raw_dpy(),self.window as u64,self.context);
                         self.framebuffer.bind();
                         for layer in &self.layers {
                             gl::Viewport(layer.x,layer.y,layer.width as i32,layer.height as i32);
@@ -391,7 +318,7 @@ impl Video {
                             self.layer_shader.set_uniform("u_texture",0);
                             gl::BindBuffer(gl::ARRAY_BUFFER,self.quad_vbo);
                             gl::EnableVertexAttribArray(0);
-                            gl::VertexAttribPointer(0,2,gl::FLOAT,gl::FALSE,0,0 as *const types::GLvoid);
+                            gl::VertexAttribPointer(0,2,gl::FLOAT,gl::FALSE,0,0 as *const GLvoid);
                             gl::DrawArrays(gl::TRIANGLE_FAN,0,4);
                             gl::DisableVertexAttribArray(0);
                             gl::Flush();
@@ -415,25 +342,25 @@ impl Video {
                         self.final_shader.set_uniform("u_texture",0);
                         gl::BindBuffer(gl::ARRAY_BUFFER,self.quad_vbo);
                         gl::EnableVertexAttribArray(0);
-                        gl::VertexAttribPointer(0,2,gl::FLOAT,gl::FALSE,0,0 as *const types::GLvoid);
+                        gl::VertexAttribPointer(0,2,gl::FLOAT,gl::FALSE,0,0 as *const GLvoid);
                         gl::DrawArrays(gl::TRIANGLE_FAN,0,4);
                         gl::DisableVertexAttribArray(0);
                         gl::Flush();
-                        glx::glXSwapBuffers(self.connection.get_raw_dpy(),self.window as xlib::XID);
+                        glXSwapBuffers(self.connection.get_raw_dpy(),self.window as XID);
                     }
                 },
-                xcb::KEY_PRESS => {
-                    let key_press: &xcb::KeyPressEvent = unsafe { xcb::cast_event(&xcb_event) };
+                KEY_PRESS => {
+                    let key_press: &KeyPressEvent = unsafe { cast_event(&xcb_event) };
                     let k = key_press.detail() as u8;
                     return Some(Event::KeyPress(k));
                 },
-                xcb::KEY_RELEASE => {
-                    let key_release: &xcb::KeyReleaseEvent = unsafe { xcb::cast_event(&xcb_event) };
+                KEY_RELEASE => {
+                    let key_release: &KeyReleaseEvent = unsafe { cast_event(&xcb_event) };
                     let k = key_release.detail() as u8;
                     return Some(Event::KeyRelease(k));
                 },
-                xcb::BUTTON_PRESS => {
-                    let button_press: &xcb::ButtonPressEvent = unsafe { xcb::cast_event(&xcb_event) };
+                BUTTON_PRESS => {
+                    let button_press: &ButtonPressEvent = unsafe { cast_event(&xcb_event) };
                     let x = button_press.event_x() as i32;
                     let y = button_press.event_y() as i32;
                     match button_press.detail() {
@@ -447,8 +374,8 @@ impl Video {
                         _ => { },
                     }
                 },
-                xcb::BUTTON_RELEASE => {
-                    let button_release: &xcb::ButtonReleaseEvent = unsafe { xcb::cast_event(&xcb_event) };
+                BUTTON_RELEASE => {
+                    let button_release: &ButtonReleaseEvent = unsafe { cast_event(&xcb_event) };
                     let x = button_release.event_x() as i32;
                     let y = button_release.event_y() as i32;
                     match button_release.detail() {
@@ -458,14 +385,14 @@ impl Video {
                         _ => { },
                     }
                 },
-                xcb::MOTION_NOTIFY => {
-                    let motion_notify: &xcb::MotionNotifyEvent = unsafe { xcb::cast_event(&xcb_event) };
+                MOTION_NOTIFY => {
+                    let motion_notify: &MotionNotifyEvent = unsafe { cast_event(&xcb_event) };
                     let x = motion_notify.event_x() as i32;
                     let y = motion_notify.event_y() as i32;
                     return Some(Event::MouseMove(x,y));
                 },
-                xcb::CONFIGURE_NOTIFY => {
-                    let configure_notify: &xcb::ConfigureNotifyEvent = unsafe { xcb::cast_event(&xcb_event) };
+                CONFIGURE_NOTIFY => {
+                    let configure_notify: &ConfigureNotifyEvent = unsafe { cast_event(&xcb_event) };
                     let x = configure_notify.x() as i32;
                     let y = configure_notify.y() as i32;
                     let width = configure_notify.width() as i32;
@@ -474,8 +401,8 @@ impl Video {
                     self.window_height = height as u32;
                     return Some(Event::Geometry(x,y,width,height));
                 },
-                xcb::CLIENT_MESSAGE => {
-                    let client_message : &xcb::ClientMessageEvent = unsafe { xcb::cast_event(&xcb_event) };
+                CLIENT_MESSAGE => {
+                    let client_message : &ClientMessageEvent = unsafe { cast_event(&xcb_event) };
                     let data = &client_message.data().data;
                     let atom = (data[0] as u32) | ((data[1] as u32) << 8) | ((data[2] as u32) << 16) | ((data[3] as u32) << 24);
                     if atom == self.wm_delete_window {
@@ -491,9 +418,9 @@ impl Video {
 
 impl Drop for Video {
     fn drop(&mut self) {
-        unsafe { glx::glXMakeCurrent(self.connection.get_raw_dpy(),0,ptr::null_mut()); }
-        xcb::unmap_window(&self.connection,self.window);
-        xcb::destroy_window(&self.connection,self.window);
-        unsafe { glx::glXDestroyContext(self.connection.get_raw_dpy(),self.context); }
+        unsafe { glXMakeCurrent(self.connection.get_raw_dpy(),0,null_mut()); }
+        unmap_window(&self.connection,self.window);
+        destroy_window(&self.connection,self.window);
+        unsafe { glXDestroyContext(self.connection.get_raw_dpy(),self.context); }
     }
 }

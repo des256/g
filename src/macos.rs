@@ -1,4 +1,4 @@
-// Kvasir - MacOS
+// G - MacOS
 // Desmond Germans, 2020
 
 pub struct Video {

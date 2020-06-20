@@ -1,4 +1,4 @@
-// Kvasir - iOS
+// G - iOS
 // Desmond Germans, 2020
 
 pub struct Video {

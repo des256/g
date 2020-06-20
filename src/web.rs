@@ -1,4 +1,4 @@
-// Kvasir - Web
+// G - Web
 // Desmond Germans, 2020
 
 pub struct Video {

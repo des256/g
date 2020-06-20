@@ -1,4 +1,4 @@
-// Kvasir - Android
+// G - Android
 // Desmond Germans, 2020
 
 pub struct Video {

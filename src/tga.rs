@@ -1,7 +1,7 @@
-// Kvasir - TGA
+// G - TGA
 // Desmond Germans, 2020
 
-use crate::*;
+use crate::Image;
 
 pub fn test(_src: &[u8]) -> Option<(u32,u32)> {
     None

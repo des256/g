@@ -1,13 +1,21 @@
-// Kvasir - System Interface - Image test
+// G - Image test
 // Desmond Germans, 2020
 
-use kvasir::*;
-
-use std::fs;
+use g::Video;
+use g::VideoConfig;
+use g::WindowConfig;
+use g::FramebufferConfig;
+use g::Layer;
+use std::fs::File;
 use std::io::prelude::*;
+use g::decode;
+use g::Texture2D;
+use g::Shader;
+use g::SetUniform;
+use g::Event;
 
 fn main() {
-    let mut video = match Video::new(kvasir::VideoConfig {
+    let mut video = match Video::new(VideoConfig {
         window: WindowConfig::High,
         framebuffer: FramebufferConfig::Low,
     }) {
@@ -15,8 +23,8 @@ fn main() {
         Err(_) => { panic!("Cannot open video."); },
     };
     video.set_window_title("Image Test");
-    let layer = Layer::new(0,0,320,180);
-    let mut file = fs::File::open("try/test.png").expect("cannot open file");
+    let layer = Layer::new(0,0,320,180).expect("cannot create layer");
+    let mut file = File::open("try/test.png").expect("cannot open file");
     let mut buffer: Vec<u8> = Vec::new();
     file.read_to_end(&mut buffer).expect("unable to read file");
     let image = decode(&buffer).expect("unable to decode");
@@ -41,7 +49,7 @@ fn main() {
             fs_output = texture2D(u_texture,f_tex);
         }
     "#;
-    let shader = Shader::new(vs,None,fs);
+    let shader = Shader::new(vs,None,fs).expect("cannot create shader");
     unsafe {
         println!("rendering test image");
         layer.bind();
