@@ -13,8 +13,6 @@ use std::ffi::OsStr;
 use std::os::windows::ffi::OsStrExt;
 use std::iter::once;
 use crate::VideoConfig;
-use gl::types::GLuint;
-use crate::Layer;
 use crate::Event;
 use crate::WindowConfig;
 use crate::Button;
@@ -23,6 +21,8 @@ use std::ffi::CString;
 use std::ffi::c_void;
 use std::mem::transmute;
 use std::os::raw::c_int;
+use crate::VideoError;
+use crate::OpenGLContext;
 
 const WGL_DRAW_TO_WINDOW_ARB: c_int = 0x2001;
 const WGL_SUPPORT_OPENGL_ARB: c_int = 0x2010;
@@ -62,8 +62,9 @@ pub struct Video {
     hdc: HDC,
     hglrc: HGLRC,
     queue: VecDeque<Event>,
-    pub quad_vbo: GLuint,
-    pub layers: Vec<Layer>,
+    pub opengl: OpenGLContext,
+    window_width: u32,
+    window_height: u32,
 }
 
 fn win32_string(value: &str) -> Vec<u16> {
@@ -81,10 +82,10 @@ unsafe extern "system" fn win32_proc(
         return DefWindowProcW(hwnd,message,wparam,lparam);
     }
     let video = video_ptr as *mut Video;
-    let wparam_hi = (wparam >> 16) as i32;
-    let wparam_lo = (wparam & 0x0000FFFF) as i32;
-    let lparam_hi = (lparam >> 16) as i32;
-    let lparam_lo = (lparam & 0x0000FFFF) as i32;
+    let wparam_hi = (wparam >> 16) as u16;
+    let wparam_lo = (wparam & 0x0000FFFF) as u16;
+    let lparam_hi = (lparam >> 16) as u16;
+    let lparam_lo = (lparam & 0x0000FFFF) as u16;
     match message {
         WM_KEYDOWN => {
             (*video).queue.push_back(
@@ -98,32 +99,32 @@ unsafe extern "system" fn win32_proc(
         },
         WM_LBUTTONDOWN => {
             (*video).queue.push_back(
-                Event::MousePress(lparam_lo,lparam_hi,Button::Left)
+                Event::MousePress(lparam_lo as i32,lparam_hi as i32,Button::Left)
             );
         },
         WM_LBUTTONUP => {
             (*video).queue.push_back(
-                Event::MouseRelease(lparam_lo,lparam_hi,Button::Left)
+                Event::MouseRelease(lparam_lo as i32,lparam_hi as i32,Button::Left)
             );
         },
         WM_MBUTTONDOWN => {
             (*video).queue.push_back(
-                Event::MousePress(lparam_lo,lparam_hi,Button::Middle)
+                Event::MousePress(lparam_lo as i32,lparam_hi as i32,Button::Middle)
             );
         },
         WM_MBUTTONUP => {
             (*video).queue.push_back(
-                Event::MouseRelease(lparam_lo,lparam_hi,Button::Middle)
+                Event::MouseRelease(lparam_lo as i32,lparam_hi as i32,Button::Middle)
             );
         },
         WM_RBUTTONDOWN => {
             (*video).queue.push_back(
-                Event::MousePress(lparam_lo,lparam_hi,Button::Right)
+                Event::MousePress(lparam_lo as i32,lparam_hi as i32,Button::Right)
             );
         },
         WM_RBUTTONUP => {
             (*video).queue.push_back(
-                Event::MouseRelease(lparam_lo,lparam_hi,Button::Right)
+                Event::MouseRelease(lparam_lo as i32,lparam_hi as i32,Button::Right)
             );
         },
         WM_MOUSEWHEEL => {
@@ -134,7 +135,7 @@ unsafe extern "system" fn win32_proc(
             }
         },
         WM_MOUSEMOVE => {
-            (*video).queue.push_back(Event::MouseMove(lparam_lo,lparam_hi));
+            (*video).queue.push_back(Event::MouseMove(lparam_lo as i32,lparam_hi as i32));
         },
         WM_PAINT => {
             let mut paintstruct = PAINTSTRUCT {
@@ -151,21 +152,15 @@ unsafe extern "system" fn win32_proc(
                 rgbReserved: [0; 32],
             };
             BeginPaint(hwnd,&mut paintstruct);
-            gl::ClearColor(1.0,0.0,0.0,1.0);
-            gl::Clear(gl::COLOR_BUFFER_BIT);
+            wglMakeCurrent((*video).hdc,(*video).hglrc);
+            (*video).opengl.render((*video).window_width,(*video).window_height);
             SwapBuffers((*video).hdc);
             EndPaint(hwnd,&paintstruct);
-            (*video).queue.push_back(
-                Event::Paint(
-                    paintstruct.rcPaint.left,
-                    paintstruct.rcPaint.top,
-                    paintstruct.rcPaint.right - paintstruct.rcPaint.left,
-                    paintstruct.rcPaint.bottom - paintstruct.rcPaint.top
-                )
-            );
         },
         WM_SIZE => {
-            (*video).queue.push_back(Event::Resize(lparam_lo,lparam_hi));
+            (*video).window_width = lparam_lo as u32;
+            (*video).window_height = lparam_hi as u32;
+            (*video).queue.push_back(Event::Resize((*video).window_width,(*video).window_height));
         },
         WM_CLOSE => {
             (*video).queue.push_back(Event::Close);
@@ -175,10 +170,6 @@ unsafe extern "system" fn win32_proc(
         },
     }
     0
-}
-
-pub enum VideoError {
-    BadShitHappened
 }
 
 fn load_function(hinstance: HINSTANCE,name: &str) -> *mut c_void {
@@ -217,7 +208,7 @@ impl Video {
             lpszClassName: win32_string("G").as_ptr(),
         };
         if unsafe { RegisterClassW(&wc as *const WNDCLASSW) } == 0 {
-            return Err(VideoError::BadShitHappened);
+            return Err(VideoError::Generic);
         }
 
         let fake_hwnd = unsafe {
@@ -237,7 +228,7 @@ impl Video {
             )
         };
         if fake_hwnd == null_mut() {
-            return Err(VideoError::BadShitHappened);
+            return Err(VideoError::Generic);
         }
         let fake_hdc = unsafe { GetDC(fake_hwnd) };
         let fake_pfd = PIXELFORMATDESCRIPTOR {
@@ -273,23 +264,23 @@ impl Video {
         };
         let fake_pfdid = unsafe { ChoosePixelFormat(fake_hdc,&fake_pfd) };
         if fake_pfdid == 0 {
-            return Err(VideoError::BadShitHappened);
+            return Err(VideoError::Generic);
         }
         if unsafe { SetPixelFormat(fake_hdc,fake_pfdid,&fake_pfd) } == 0 {
-            return Err(VideoError::BadShitHappened);
+            return Err(VideoError::Generic);
         }
         let fake_hglrc = unsafe { wglCreateContext(fake_hdc) };
         if fake_hglrc == null_mut() {
-            return Err(VideoError::BadShitHappened);
+            return Err(VideoError::Generic);
         }
         if unsafe { wglMakeCurrent(fake_hdc,fake_hglrc) } == 0 {
-            return Err(VideoError::BadShitHappened);
+            return Err(VideoError::Generic);
         }
         let opengl32_hinstance = unsafe {
             LoadLibraryW(win32_string("opengl32.dll").as_ptr())
         };
         if opengl32_hinstance == null_mut() {
-            return Err(VideoError::BadShitHappened);
+            return Err(VideoError::Generic);
         }
         let wgl_choose_pixel_format: WglChoosePixelFormatARBProc = unsafe {
             transmute(
@@ -340,7 +331,7 @@ impl Video {
             hinstance,null_mut())
         };
         if hwnd == null_mut() {
-            return Err(VideoError::BadShitHappened);
+            return Err(VideoError::Generic);
         }
         let hdc = unsafe { GetDC(hwnd) };
         let pfattribs = [
@@ -367,10 +358,10 @@ impl Video {
             &mut pfid,
             &mut numformats
         ) } == 0 {
-            return Err(VideoError::BadShitHappened);
+            return Err(VideoError::Generic);
         }
         if numformats == 0 {
-            return Err(VideoError::BadShitHappened);
+            return Err(VideoError::Generic);
         }
         let mut pfd = PIXELFORMATDESCRIPTOR {
             nSize: 40,
@@ -419,25 +410,33 @@ impl Video {
             )
         };
         if hglrc == null_mut() {
-            return Err(VideoError::BadShitHappened);
+            return Err(VideoError::Generic);
         }
         unsafe { wglMakeCurrent(null_mut(),null_mut()) };
         unsafe { wglDeleteContext(fake_hglrc) };
         unsafe { ReleaseDC(fake_hwnd,fake_hdc) };
         unsafe { DestroyWindow(fake_hwnd) };
         if unsafe { wglMakeCurrent(hdc,hglrc) } == 0 {
-            return Err(VideoError::BadShitHappened);
+            return Err(VideoError::Generic);
         }
+        
+        let opengl = match OpenGLContext::new(config.framebuffer) {
+            Ok(opengl) => opengl,
+            Err(_) => { return Err(VideoError::Generic) },
+        };
+
         unsafe { ShowWindow(hwnd,SW_SHOW) };
         unsafe { SetForegroundWindow(hwnd) };
         unsafe { SetFocus(hwnd) };
+
         Ok(Video {
             hwnd: hwnd,
             hdc: hdc,
             hglrc: hglrc,
             queue: VecDeque::new(),
-            quad_vbo: 0,
-            layers: Vec::new(),
+            opengl: opengl,
+            window_width: window_width as u32,
+            window_height: window_height as u32,
         })
     }
 
@@ -450,7 +449,7 @@ impl Video {
         };
     }
 
-    pub fn next_event(&mut self) -> Option<Event> {
+    pub fn poll_for_event(&mut self) -> Option<Event> {
         // HACK: Refresh the pointer, so WndProc knows which Video struct to
         // enqueue events on. Designed for single-threaded use.
         unsafe {
@@ -477,8 +476,38 @@ impl Video {
         self.queue.pop_front()
     }
 
-    pub fn wait_event(&self) {
-        unsafe { WaitMessage(); }
+    pub fn wait_for_event(&mut self) -> Option<Event> {
+        // HACK: Refresh the pointer, so WndProc knows which Video struct to
+        // enqueue events on. Designed for single-threaded use.
+        unsafe {
+            SetWindowLongPtrW(
+                self.hwnd,
+                GWLP_USERDATA,
+                self as *mut Video as LONG_PTR
+            )
+        };
+        let mut msg = MSG {
+            hwnd: null_mut(),
+            message: 0,
+            wParam: 0,
+            lParam: 0,
+            time: 0,
+            pt: POINT { x: 0,y: 0, },
+        };
+        while self.queue.is_empty() {
+            unsafe {
+                let mut processed = false;
+                while PeekMessageW(&mut msg,null_mut(),0,0,PM_REMOVE) != 0 {
+                    TranslateMessage(&msg);
+                    DispatchMessageW(&msg);
+                    processed = true;
+                }
+                if !processed {
+                    WaitMessage();
+                }
+            }    
+        }
+        self.queue.pop_front()
     }
 }
 

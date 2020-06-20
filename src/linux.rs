@@ -51,28 +51,13 @@ fn load_function(name: &str) -> *mut c_void {
 }
 
 pub struct Video {
-    pub layers: Vec<Layer>,
-    framebuffer: Framebuffer,
     connection: Connection,
     window: u32,
     window_width: u32,
     window_height: u32,
     context: GLXContext,
     wm_delete_window: u32,
-    layer_shader: Shader,
-    final_shader: Shader,
-    pub quad_vbo: GLuint,
-}
-
-static QUAD: [GLfloat; 8] = [
-    0.0,0.0,
-    1.0,0.0,
-    1.0,1.0,
-    0.0,1.0,
-];
-
-pub enum VideoError {
-    Generic,
+    opengl: OpenGLContext,
 }
 
 impl Video {
@@ -240,87 +225,19 @@ impl Video {
             context
         };
 
-        let (framebuffer_width,framebuffer_height) = match config.framebuffer {
-            FramebufferConfig::Standard => { (640,360) },
-            FramebufferConfig::Low => { (320,180) },
+        let opengl = match OpenGLContext::new(config.framebuffer) {
+            Ok(opengl) => opengl,
+            Err(error) => { return Err(VideoError::Generic) },
         };
-        let framebuffer = match Framebuffer::new(framebuffer_width,framebuffer_height) {
-            Some(framebuffer) => framebuffer,
-            None => { return Err(VideoError::Generic) },
-        };
-
-        let mut vao = 0;
-        unsafe {
-            gl::GenVertexArrays(1,&mut vao);
-            gl::BindVertexArray(vao);
-        }
-
-        let layer_vs = r#"
-            #version 420 core
-            uniform vec4 u_rect;
-            layout(location = 0) in vec2 v_pos;
-            out vec2 f_tex;
-            void main() {
-                f_tex = vec2(v_pos.x,v_pos.y);
-                gl_Position = vec4(-1.0 + 2.0 * v_pos.x,-1.0 + 2.0 * v_pos.y,0.0,1.0);
-            }
-        "#;
-        let layer_fs = r#"
-            #version 420 core
-            uniform sampler2D u_texture;
-            in vec2 f_tex;
-            out vec4 fs_output;
-            void main() {
-                fs_output = texture2D(u_texture,f_tex);
-            }
-        "#;
-        let layer_shader = match Shader::new(layer_vs,None,layer_fs) {
-            Some(shader) => shader,
-            None => { return Err(VideoError::Generic); },
-        };
-
-        let final_vs = r#"
-            #version 420 core
-            layout(location = 0) in vec2 v_pos;
-            out vec2 f_tex;
-            void main() {
-                f_tex = vec2(v_pos.x,v_pos.y);
-                gl_Position = vec4(-1.0 + 2.0 * v_pos.x,1.0 - 2.0 * v_pos.y,0.0,1.0);  // last stage swaps Y-output
-            }
-        "#;
-        let final_fs = r#"
-            #version 420 core
-            uniform sampler2D u_texture;
-            in vec2 f_tex;
-            layout(location = 0) out vec4 fs_output;
-            void main() {
-                fs_output = texture2D(u_texture,f_tex);
-            }
-        "#;
-        let final_shader = match Shader::new(final_vs,None,final_fs) {
-            Some(shader) => shader,
-            None => { return Err(VideoError::Generic); },
-        };
-
-        let mut quad_vbo: u32 = 0;
-        unsafe {
-            gl::GenBuffers(1,&mut quad_vbo);
-            gl::BindBuffer(gl::ARRAY_BUFFER,quad_vbo);
-            gl::BufferData(gl::ARRAY_BUFFER,32,transmute(&QUAD[0]),gl::STATIC_DRAW);
-        }
 
         Ok(Video {
-            layers: Vec::new(),
-            framebuffer: framebuffer,
             connection: connection,
             window: window,
             window_width: window_width as u32,
             window_height: window_height as u32,
             context: context,
             wm_delete_window: wm_delete_window,
-            layer_shader: layer_shader,
-            final_shader: final_shader,
-            quad_vbo: quad_vbo,
+            opengl: opengl,
         })
     }
 
@@ -334,48 +251,9 @@ impl Video {
         let r = xcb_event.response_type() & !0x80;
         match r {
             EXPOSE => {
-                unsafe {
-                    glXMakeCurrent(self.connection.get_raw_dpy(),self.window as u64,self.context);
-                    self.framebuffer.bind();
-                    for layer in &self.layers {
-                        gl::Viewport(layer.x,layer.y,layer.width as i32,layer.height as i32);
-                        gl::Scissor(layer.x,layer.y,layer.width as i32,layer.height as i32);
-                        // TODO: begin blending
-                        gl::BindTexture(gl::TEXTURE_2D,layer.framebuffer.tex);
-                        self.layer_shader.bind();
-                        self.layer_shader.set_uniform("u_texture",0);
-                        gl::BindBuffer(gl::ARRAY_BUFFER,self.quad_vbo);
-                        gl::EnableVertexAttribArray(0);
-                        gl::VertexAttribPointer(0,2,gl::FLOAT,gl::FALSE,0,0 as *const GLvoid);
-                        gl::DrawArrays(gl::TRIANGLE_FAN,0,4);
-                        gl::DisableVertexAttribArray(0);
-                        gl::Flush();
-                        // TODO: end blending
-                    }
-                    self.framebuffer.unbind();
-                    let scale = if (self.window_width as f32) / (self.window_height as f32) > (self.framebuffer.width as f32) / (self.framebuffer.height as f32) {
-                        (self.window_height as f32) / (self.framebuffer.height as f32)
-                    }
-                    else {
-                        (self.window_width as f32) / (self.framebuffer.width as f32)
-                    };
-                    let width = ((self.framebuffer.width as f32) * scale) as u32;
-                    let height = ((self.framebuffer.height as f32) * scale) as u32;
-                    let x = (self.window_width - width) / 2;
-                    let y = (self.window_height - height) / 2;
-                    gl::Viewport(x as i32,y as i32,width as i32,height as i32);
-                    gl::Scissor(x as i32,y as i32,width as i32,height as i32);
-                    gl::BindTexture(gl::TEXTURE_2D,self.framebuffer.tex);
-                    self.final_shader.bind();
-                    self.final_shader.set_uniform("u_texture",0);
-                    gl::BindBuffer(gl::ARRAY_BUFFER,self.quad_vbo);
-                    gl::EnableVertexAttribArray(0);
-                    gl::VertexAttribPointer(0,2,gl::FLOAT,gl::FALSE,0,0 as *const GLvoid);
-                    gl::DrawArrays(gl::TRIANGLE_FAN,0,4);
-                    gl::DisableVertexAttribArray(0);
-                    gl::Flush();
-                    glXSwapBuffers(self.connection.get_raw_dpy(),self.window as XID);
-                }
+                unsafe { glXMakeCurrent(self.connection.get_raw_dpy(),self.window as u64,self.context) };
+                self.opengl.render();
+                unsafe { glXSwapBuffers(self.connection.get_raw_dpy(),self.window as XID) };
             },
             KEY_PRESS => {
                 let key_press: &KeyPressEvent = unsafe { cast_event(&xcb_event) };

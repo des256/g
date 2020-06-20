@@ -66,6 +66,10 @@ pub enum Event {
     Close,
 }
 
+pub enum VideoError {
+    Generic,
+}
+
 #[cfg(target_os="linux")]
 mod linux;
 #[cfg(target_os="linux")]

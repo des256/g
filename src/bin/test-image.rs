@@ -58,7 +58,7 @@ fn main() {
         texture.bind();
         shader.bind();
         shader.set_uniform("u_texture",0);
-        gl::BindBuffer(gl::ARRAY_BUFFER,video.quad_vbo);
+        gl::BindBuffer(gl::ARRAY_BUFFER,video.opengl.quad_vbo);
         gl::EnableVertexAttribArray(0);
         gl::VertexAttribPointer(0,2,gl::FLOAT,gl::FALSE,0,0 as *const gl::types::GLvoid);
         gl::DrawArrays(gl::TRIANGLE_FAN,0,4);
@@ -66,7 +66,7 @@ fn main() {
         gl::Flush();
         layer.unbind();
     }
-    video.layers.push(layer);
+    video.opengl.layers.push(layer);
     loop {
         let event = video.wait_for_event().expect("Event queue error.");
         match event {
