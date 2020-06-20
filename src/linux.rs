@@ -1,6 +1,34 @@
 // G - Linux
 // Desmond Germans, 2020
 
+use x11::xlib::*;
+use std::os::raw::c_void;
+use std::os::raw::c_int;
+use std::ffi::CString;
+use std::mem::transmute;
+use crate::Layer;
+use crate::Framebuffer;
+use crate::VideoConfig;
+use crate::WindowConfig;
+use crate::FramebufferConfig;
+use xcb::base::Connection;
+use crate::Shader;
+use gl::types::GLuint;
+use gl::types::GLfloat;
+use xcb::base::EventQueueOwner;
+use x11::glx::*;
+use std::ffi::CStr;
+use xcb::xproto::*;
+use x11::glx::arb::*;
+use std::ptr::null_mut;
+use crate::Event;
+use gl::types::GLvoid;
+use crate::SetUniform;
+use xcb::base::cast_event;
+use crate::Button;
+use crate::Wheel;
+use xcb::base::GenericEvent;
+
 type GlXCreateContextAttribsARBProc = unsafe extern "C" fn(
     dpy: *mut Display,
     fbc: GLXFBConfig,
@@ -44,15 +72,7 @@ static QUAD: [GLfloat; 8] = [
 ];
 
 pub enum VideoError {
-    X11Error,
-    GLXError,
-    GLXVersionMismatch,
-    NoSuitableConfig,
-    MissingGLXARBCreateContext,
-    MissingWMProtocols,
-    MissingWMDeleteWindow,
-    OpenGLError,
-    OpenGLIndirect,
+    Generic,
 }
 
 impl Video {
@@ -60,7 +80,7 @@ impl Video {
 
         let connection = match Connection::connect_with_xlib_display() {
             Ok((connection,_)) => connection,
-            Err(_) => { return Err(VideoError::X11Error); },
+            Err(_) => { return Err(VideoError::Generic); },
         };
         connection.set_event_queue_owner(EventQueueOwner::Xcb);
 
@@ -73,11 +93,11 @@ impl Video {
                     &mut glxmaj as *mut c_int,
                     &mut glxmin as *mut c_int
                 ) == 0 {
-                    return Err(VideoError::GLXError);
+                    return Err(VideoError::Generic);
                 }
             }
             if (glxmaj * 100 + glxmin) < 103 {
-                return Err(VideoError::GLXVersionMismatch);
+                return Err(VideoError::Generic);
             }
             let attribs = [
                 GLX_X_RENDERABLE,  1,
@@ -103,7 +123,7 @@ impl Video {
                 )
             };
             if fbcount == 0 {
-                return Err(VideoError::NoSuitableConfig);
+                return Err(VideoError::Generic);
             }
             let fbconfig = unsafe { *fbconfigs };
             unsafe { XFree(fbconfigs as *mut c_void); }
@@ -123,7 +143,7 @@ impl Video {
                 }
             }
             if !found {
-                return Err(VideoError::MissingGLXARBCreateContext);
+                return Err(VideoError::Generic);
             }
             let glx_create_context_attribs: GlXCreateContextAttribsARBProc = unsafe {
                 transmute(load_function("glXCreateContextAttribsARB"))
@@ -135,11 +155,11 @@ impl Video {
         let delete_window_com = intern_atom(&connection,false,"WM_DELETE_WINDOW");
         let wm_protocols = match protocols_com.get_reply() {
             Ok(protocols) => protocols.atom(),
-            Err(_) => { return Err(VideoError::MissingWMProtocols); },
+            Err(_) => { return Err(VideoError::Generic); },
         };
         let wm_delete_window = match delete_window_com.get_reply() {
             Ok(delete_window) => delete_window.atom(),
-            Err(_) => { return Err(VideoError::MissingWMDeleteWindow); },
+            Err(_) => { return Err(VideoError::Generic); },
         };
         
         let rootwindow = visual_screen.root();
@@ -210,10 +230,10 @@ impl Video {
             connection.flush();
             unsafe { XSync(connection.get_raw_dpy(),False) };
             if context.is_null() {
-                return Err(VideoError::OpenGLError);
+                return Err(VideoError::Generic);
             }
             if unsafe { glXIsDirect(connection.get_raw_dpy(),context) } == 0 {
-                return Err(VideoError::OpenGLIndirect);
+                return Err(VideoError::Generic);
             }
             unsafe { glXMakeCurrent(connection.get_raw_dpy(),window as XID,context) };
             gl::load_with(|symbol| load_function(&symbol));
@@ -224,7 +244,10 @@ impl Video {
             FramebufferConfig::Standard => { (640,360) },
             FramebufferConfig::Low => { (320,180) },
         };
-        let framebuffer = Framebuffer::new(framebuffer_width,framebuffer_height);
+        let framebuffer = match Framebuffer::new(framebuffer_width,framebuffer_height) {
+            Some(framebuffer) => framebuffer,
+            None => { return Err(VideoError::Generic) },
+        };
 
         let mut vao = 0;
         unsafe {
@@ -251,7 +274,10 @@ impl Video {
                 fs_output = texture2D(u_texture,f_tex);
             }
         "#;
-        let layer_shader = Shader::new(layer_vs,None,layer_fs);
+        let layer_shader = match Shader::new(layer_vs,None,layer_fs) {
+            Some(shader) => shader,
+            None => { return Err(VideoError::Generic); },
+        };
 
         let final_vs = r#"
             #version 420 core
@@ -271,7 +297,10 @@ impl Video {
                 fs_output = texture2D(u_texture,f_tex);
             }
         "#;
-        let final_shader = Shader::new(final_vs,None,final_fs);
+        let final_shader = match Shader::new(final_vs,None,final_fs) {
+            Some(shader) => shader,
+            None => { return Err(VideoError::Generic); },
+        };
 
         let mut quad_vbo: u32 = 0;
         unsafe {
@@ -301,117 +330,133 @@ impl Video {
         self.connection.flush();
     }
 
-    pub fn next_event(&mut self) -> Option<Event> {
-        while let Some(xcb_event) = self.connection.poll_for_event() {
-            let r = xcb_event.response_type() & !0x80;
-            match r {
-                EXPOSE => {
-                    unsafe {
-                        glXMakeCurrent(self.connection.get_raw_dpy(),self.window as u64,self.context);
-                        self.framebuffer.bind();
-                        for layer in &self.layers {
-                            gl::Viewport(layer.x,layer.y,layer.width as i32,layer.height as i32);
-                            gl::Scissor(layer.x,layer.y,layer.width as i32,layer.height as i32);
-                            // TODO: begin blending
-                            gl::BindTexture(gl::TEXTURE_2D,layer.framebuffer.tex);
-                            self.layer_shader.bind();
-                            self.layer_shader.set_uniform("u_texture",0);
-                            gl::BindBuffer(gl::ARRAY_BUFFER,self.quad_vbo);
-                            gl::EnableVertexAttribArray(0);
-                            gl::VertexAttribPointer(0,2,gl::FLOAT,gl::FALSE,0,0 as *const GLvoid);
-                            gl::DrawArrays(gl::TRIANGLE_FAN,0,4);
-                            gl::DisableVertexAttribArray(0);
-                            gl::Flush();
-                            // TODO: end blending
-                        }
-                        self.framebuffer.unbind();
-                        let scale = if (self.window_width as f32) / (self.window_height as f32) > (self.framebuffer.width as f32) / (self.framebuffer.height as f32) {
-                            (self.window_height as f32) / (self.framebuffer.height as f32)
-                        }
-                        else {
-                            (self.window_width as f32) / (self.framebuffer.width as f32)
-                        };
-                        let width = ((self.framebuffer.width as f32) * scale) as u32;
-                        let height = ((self.framebuffer.height as f32) * scale) as u32;
-                        let x = (self.window_width - width) / 2;
-                        let y = (self.window_height - height) / 2;
-                        gl::Viewport(x as i32,y as i32,width as i32,height as i32);
-                        gl::Scissor(x as i32,y as i32,width as i32,height as i32);
-                        gl::BindTexture(gl::TEXTURE_2D,self.framebuffer.tex);
-                        self.final_shader.bind();
-                        self.final_shader.set_uniform("u_texture",0);
+    fn handle_event(&mut self,xcb_event: GenericEvent) -> Option<Event> {
+        let r = xcb_event.response_type() & !0x80;
+        match r {
+            EXPOSE => {
+                unsafe {
+                    glXMakeCurrent(self.connection.get_raw_dpy(),self.window as u64,self.context);
+                    self.framebuffer.bind();
+                    for layer in &self.layers {
+                        gl::Viewport(layer.x,layer.y,layer.width as i32,layer.height as i32);
+                        gl::Scissor(layer.x,layer.y,layer.width as i32,layer.height as i32);
+                        // TODO: begin blending
+                        gl::BindTexture(gl::TEXTURE_2D,layer.framebuffer.tex);
+                        self.layer_shader.bind();
+                        self.layer_shader.set_uniform("u_texture",0);
                         gl::BindBuffer(gl::ARRAY_BUFFER,self.quad_vbo);
                         gl::EnableVertexAttribArray(0);
                         gl::VertexAttribPointer(0,2,gl::FLOAT,gl::FALSE,0,0 as *const GLvoid);
                         gl::DrawArrays(gl::TRIANGLE_FAN,0,4);
                         gl::DisableVertexAttribArray(0);
                         gl::Flush();
-                        glXSwapBuffers(self.connection.get_raw_dpy(),self.window as XID);
+                        // TODO: end blending
                     }
-                },
-                KEY_PRESS => {
-                    let key_press: &KeyPressEvent = unsafe { cast_event(&xcb_event) };
-                    let k = key_press.detail() as u8;
-                    return Some(Event::KeyPress(k));
-                },
-                KEY_RELEASE => {
-                    let key_release: &KeyReleaseEvent = unsafe { cast_event(&xcb_event) };
-                    let k = key_release.detail() as u8;
-                    return Some(Event::KeyRelease(k));
-                },
-                BUTTON_PRESS => {
-                    let button_press: &ButtonPressEvent = unsafe { cast_event(&xcb_event) };
-                    let x = button_press.event_x() as i32;
-                    let y = button_press.event_y() as i32;
-                    match button_press.detail() {
-                        1 => { return Some(Event::MousePress(x,y,Button::Left)); },
-                        2 => { return Some(Event::MousePress(x,y,Button::Middle)); },
-                        3 => { return Some(Event::MousePress(x,y,Button::Right)); },
-                        4 => { return Some(Event::MouseWheel(Wheel::Up)); },
-                        5 => { return Some(Event::MouseWheel(Wheel::Down)); },
-                        6 => { return Some(Event::MouseWheel(Wheel::Left)); },
-                        7 => { return Some(Event::MouseWheel(Wheel::Right)); },
-                        _ => { },
+                    self.framebuffer.unbind();
+                    let scale = if (self.window_width as f32) / (self.window_height as f32) > (self.framebuffer.width as f32) / (self.framebuffer.height as f32) {
+                        (self.window_height as f32) / (self.framebuffer.height as f32)
                     }
-                },
-                BUTTON_RELEASE => {
-                    let button_release: &ButtonReleaseEvent = unsafe { cast_event(&xcb_event) };
-                    let x = button_release.event_x() as i32;
-                    let y = button_release.event_y() as i32;
-                    match button_release.detail() {
-                        1 => { return Some(Event::MouseRelease(x,y,Button::Left)); },
-                        2 => { return Some(Event::MouseRelease(x,y,Button::Middle)); },
-                        3 => { return Some(Event::MouseRelease(x,y,Button::Right)); },
-                        _ => { },
-                    }
-                },
-                MOTION_NOTIFY => {
-                    let motion_notify: &MotionNotifyEvent = unsafe { cast_event(&xcb_event) };
-                    let x = motion_notify.event_x() as i32;
-                    let y = motion_notify.event_y() as i32;
-                    return Some(Event::MouseMove(x,y));
-                },
-                CONFIGURE_NOTIFY => {
-                    let configure_notify: &ConfigureNotifyEvent = unsafe { cast_event(&xcb_event) };
-                    let x = configure_notify.x() as i32;
-                    let y = configure_notify.y() as i32;
-                    let width = configure_notify.width() as i32;
-                    let height = configure_notify.height() as i32;
-                    self.window_width = width as u32;
-                    self.window_height = height as u32;
-                    return Some(Event::Geometry(x,y,width,height));
-                },
-                CLIENT_MESSAGE => {
-                    let client_message : &ClientMessageEvent = unsafe { cast_event(&xcb_event) };
-                    let data = &client_message.data().data;
-                    let atom = (data[0] as u32) | ((data[1] as u32) << 8) | ((data[2] as u32) << 16) | ((data[3] as u32) << 24);
-                    if atom == self.wm_delete_window {
-                        return Some(Event::Close);
-                    }
-                },
-                _ => { },
+                    else {
+                        (self.window_width as f32) / (self.framebuffer.width as f32)
+                    };
+                    let width = ((self.framebuffer.width as f32) * scale) as u32;
+                    let height = ((self.framebuffer.height as f32) * scale) as u32;
+                    let x = (self.window_width - width) / 2;
+                    let y = (self.window_height - height) / 2;
+                    gl::Viewport(x as i32,y as i32,width as i32,height as i32);
+                    gl::Scissor(x as i32,y as i32,width as i32,height as i32);
+                    gl::BindTexture(gl::TEXTURE_2D,self.framebuffer.tex);
+                    self.final_shader.bind();
+                    self.final_shader.set_uniform("u_texture",0);
+                    gl::BindBuffer(gl::ARRAY_BUFFER,self.quad_vbo);
+                    gl::EnableVertexAttribArray(0);
+                    gl::VertexAttribPointer(0,2,gl::FLOAT,gl::FALSE,0,0 as *const GLvoid);
+                    gl::DrawArrays(gl::TRIANGLE_FAN,0,4);
+                    gl::DisableVertexAttribArray(0);
+                    gl::Flush();
+                    glXSwapBuffers(self.connection.get_raw_dpy(),self.window as XID);
+                }
+            },
+            KEY_PRESS => {
+                let key_press: &KeyPressEvent = unsafe { cast_event(&xcb_event) };
+                let k = key_press.detail() as u8;
+                return Some(Event::KeyPress(k));
+            },
+            KEY_RELEASE => {
+                let key_release: &KeyReleaseEvent = unsafe { cast_event(&xcb_event) };
+                let k = key_release.detail() as u8;
+                return Some(Event::KeyRelease(k));
+            },
+            BUTTON_PRESS => {
+                let button_press: &ButtonPressEvent = unsafe { cast_event(&xcb_event) };
+                let x = button_press.event_x() as i32;
+                let y = button_press.event_y() as i32;
+                match button_press.detail() {
+                    1 => { return Some(Event::MousePress(x,y,Button::Left)); },
+                    2 => { return Some(Event::MousePress(x,y,Button::Middle)); },
+                    3 => { return Some(Event::MousePress(x,y,Button::Right)); },
+                    4 => { return Some(Event::MouseWheel(Wheel::Up)); },
+                    5 => { return Some(Event::MouseWheel(Wheel::Down)); },
+                    6 => { return Some(Event::MouseWheel(Wheel::Left)); },
+                    7 => { return Some(Event::MouseWheel(Wheel::Right)); },
+                    _ => { },
+                }
+            },
+            BUTTON_RELEASE => {
+                let button_release: &ButtonReleaseEvent = unsafe { cast_event(&xcb_event) };
+                let x = button_release.event_x() as i32;
+                let y = button_release.event_y() as i32;
+                match button_release.detail() {
+                    1 => { return Some(Event::MouseRelease(x,y,Button::Left)); },
+                    2 => { return Some(Event::MouseRelease(x,y,Button::Middle)); },
+                    3 => { return Some(Event::MouseRelease(x,y,Button::Right)); },
+                    _ => { },
+                }
+            },
+            MOTION_NOTIFY => {
+                let motion_notify: &MotionNotifyEvent = unsafe { cast_event(&xcb_event) };
+                let x = motion_notify.event_x() as i32;
+                let y = motion_notify.event_y() as i32;
+                return Some(Event::MouseMove(x,y));
+            },
+            CONFIGURE_NOTIFY => {
+                let configure_notify: &ConfigureNotifyEvent = unsafe { cast_event(&xcb_event) };
+                let width = configure_notify.width() as u32;
+                let height = configure_notify.height() as u32;
+                if (width != self.window_width) || (height != self.window_height) {
+                    self.window_width = width;
+                    self.window_height = height;
+                    return Some(Event::Resize(width,height));
+                }
+            },
+            CLIENT_MESSAGE => {
+                let client_message : &ClientMessageEvent = unsafe { cast_event(&xcb_event) };
+                let data = &client_message.data().data;
+                let atom = (data[0] as u32) | ((data[1] as u32) << 8) | ((data[2] as u32) << 16) | ((data[3] as u32) << 24);
+                if atom == self.wm_delete_window {
+                    return Some(Event::Close);
+                }
+            },
+            _ => { },
+        }
+        None
+    }
+
+    pub fn poll_for_event(&mut self) -> Option<Event> {
+        while let Some(xcb_event) = self.connection.poll_for_event() {
+            if let Some(event) = self.handle_event(xcb_event) {
+                return Some(event);
             }
-        }    
+        }
+        None
+    }
+
+    pub fn wait_for_event(&mut self) -> Option<Event> {
+        while let Some(xcb_event) = self.connection.wait_for_event() {
+            if let Some(event) = self.handle_event(xcb_event) {
+                return Some(event);
+            }
+        }
         None
     }
 }

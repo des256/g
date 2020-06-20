@@ -17,38 +17,36 @@ fn main() {
     };
     video.set_window_title("Window Test");
     loop {
-        video.wait_event();  // should be waiting for refresh rate, or similar
-        while let Some(event) = video.next_event() {
-            match event {
-                Event::KeyPress(k) => {
-                    println!("KeyPress {}",k);
-                },
-                Event::KeyRelease(k) => {
-                    println!("KeyRelease {}",k);
-                },
-                Event::MousePress(x,y,b) => {
-                    println!("MousePress {},{}; {}",x,y,b);
-                },
-                Event::MouseRelease(x,y,b) => {
-                    println!("MouseRelease {},{}; {}",x,y,b);
-                },
-                Event::MouseMove(x,y) => {
-                    println!("MouseMove {},{}",x,y);
-                },
-                Event::MouseWheel(b) => {
-                    println!("MouseWheel {}",b);
-                },
-                Event::Resize(width,height) => {
-                    println!("Resize {}x{}",width,height);
-                },
-                Event::Paint(x,y,width,height) => {
-                    println!("Paint {},{}; {}x{}",x,y,width,height);
-                },
-                Event::Close => {
-                    println!("Close");
-                    return;
-                }
-            }    
-        }
+        let event = video.wait_for_event().expect("Event queue error.");
+        match event {
+            Event::KeyPress(k) => {
+                println!("KeyPress {}",k);
+            },
+            Event::KeyRelease(k) => {
+                println!("KeyRelease {}",k);
+            },
+            Event::MousePress(x,y,b) => {
+                println!("MousePress {},{}; {}",x,y,b);
+            },
+            Event::MouseRelease(x,y,b) => {
+                println!("MouseRelease {},{}; {}",x,y,b);
+            },
+            Event::MouseMove(x,y) => {
+                println!("MouseMove {},{}",x,y);
+            },
+            Event::MouseWheel(b) => {
+                println!("MouseWheel {}",b);
+            },
+            Event::Resize(width,height) => {
+                println!("Resize {}x{}",width,height);
+            },
+            Event::Paint(x,y,width,height) => {
+                println!("Paint {},{}; {}x{}",x,y,width,height);
+            },
+            Event::Close => {
+                println!("Close");
+                return;
+            }
+        }    
     }
 }

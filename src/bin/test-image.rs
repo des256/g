@@ -68,13 +68,12 @@ fn main() {
     }
     video.layers.push(layer);
     loop {
-        while let Some(event) = video.next_event() {
-            match event {
-                Event::Close => {
-                    return;
-                },
-                _ => { },
-            }    
-        }
+        let event = video.wait_for_event().expect("Event queue error.");
+        match event {
+            Event::Close => {
+                return;
+            },
+            _ => { },
+        }    
     }
 }

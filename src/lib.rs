@@ -61,8 +61,8 @@ pub enum Event {
     MouseRelease(i32,i32,Button),
     MouseWheel(Wheel),
     MouseMove(i32,i32),
-    Paint(i32,i32,i32,i32),
-    Resize(i32,i32),
+    Paint(i32,i32,u32,u32),
+    Resize(u32,u32),
     Close,
 }
 
