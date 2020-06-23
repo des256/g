@@ -9,8 +9,8 @@ use g::Event;
 
 fn main() {
     let mut video = match Video::new(VideoConfig {
-        window: WindowConfig::High,
-        framebuffer: FramebufferConfig::Low,
+        window: WindowConfig { width: 1280,height: 720, },
+        framebuffer: FramebufferConfig { width: 256,height: 144, },
     }) {
         Ok(video) => video,
         Err(_) => { panic!("Cannot open Video."); },

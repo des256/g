@@ -4,15 +4,15 @@
 use crate::Framebuffer;
 
 pub struct Layer {
-    pub x: i32,
-    pub y: i32,
-    pub width: u32,
-    pub height: u32,
+    pub x: isize,
+    pub y: isize,
+    pub width: usize,
+    pub height: usize,
     pub framebuffer: Framebuffer,
 }
 
 impl Layer {
-    pub fn new(x: i32,y: i32,width: u32,height: u32) -> Option<Layer> {
+    pub fn new(x: isize,y: isize,width: usize,height: usize) -> Option<Layer> {
         let framebuffer = match Framebuffer::new(width,height) {
             Some(framebuffer) => framebuffer,
             None => { return None; },

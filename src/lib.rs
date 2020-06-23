@@ -1,74 +1,14 @@
-// Kvasir
+// G
 // Desmond Germans, 2020
 
-use std::fmt::Display;
-use std::fmt::Formatter;
-use std::fmt::Result;
+mod video;
+pub use video::*;
 
-pub enum WindowConfig {
-    Standard,  // 640x360
-    High,  // 1280x720
-}
+mod pixel;
+pub use pixel::*;
 
-pub enum FramebufferConfig {
-    Standard,  // 640x360
-    Low,  // 320x180
-}
-
-pub struct VideoConfig {
-    pub window: WindowConfig,
-    pub framebuffer: FramebufferConfig,
-}
-
-pub enum Button {
-    Left,
-    Middle,
-    Right,
-}
-
-impl Display for Button {
-    fn fmt(&self,f: &mut Formatter) -> Result {
-        match self {
-            Button::Left => { write!(f,"left") },
-            Button::Middle => { write!(f,"middle") },
-            Button::Right => { write!(f,"right") },
-        }
-    }
-}
-
-pub enum Wheel {
-    Up,
-    Down,
-    Left,
-    Right,
-}
-
-impl Display for Wheel {
-    fn fmt(&self,f: &mut Formatter) -> Result {
-        match self {
-            Wheel::Up => { write!(f,"up") },
-            Wheel::Down => { write!(f,"down") },
-            Wheel::Left => { write!(f,"left") },
-            Wheel::Right => { write!(f,"right") },
-        }
-    }
-}
-
-pub enum Event {
-    KeyPress(u8),
-    KeyRelease(u8),
-    MousePress(i32,i32,Button),
-    MouseRelease(i32,i32,Button),
-    MouseWheel(Wheel),
-    MouseMove(i32,i32),
-    Paint(i32,i32,u32,u32),
-    Resize(u32,u32),
-    Close,
-}
-
-pub enum VideoError {
-    Generic,
-}
+mod image;
+pub use image::*;
 
 #[cfg(target_os="linux")]
 mod linux;
@@ -138,6 +78,3 @@ pub use webgl1::*;
 mod webaudio;
 #[cfg(target_arch="wasm32")]
 pub use webaudio::*;
-
-mod image;
-pub use image::*;

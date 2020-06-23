@@ -7,7 +7,6 @@ use std::os::raw::c_int;
 use std::ffi::CString;
 use std::mem::transmute;
 use crate::VideoConfig;
-use crate::WindowConfig;
 use xcb::base::Connection;
 use xcb::base::EventQueueOwner;
 use x11::glx::*;
@@ -163,20 +162,12 @@ impl Video {
             ),
             (CW_COLORMAP,colormap),
         ];
-        let (window_width,window_height) = match config.window {
-            WindowConfig::Standard => {
-                (640,360)
-            },
-            WindowConfig::High => {
-                (1280,720)
-            }
-        };
         create_window(
             &connection,
             depth as u8,
             window,
             rootwindow,
-            0,0,window_width,window_height,
+            0,0,config.window.width as u16,config.window.height as u16,
             0,
             WINDOW_CLASS_INPUT_OUTPUT as u16,
             visualid as u32,
@@ -227,8 +218,8 @@ impl Video {
         Ok(Video {
             connection: connection,
             window: window,
-            window_width: window_width as u32,
-            window_height: window_height as u32,
+            window_width: config.window.width as u32,
+            window_height: config.window.height as u32,
             context: context,
             wm_delete_window: wm_delete_window,
             opengl: opengl,

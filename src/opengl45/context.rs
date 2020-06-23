@@ -29,11 +29,7 @@ static QUAD: [GLfloat; 8] = [
 
 impl OpenGLContext {
     pub fn new(config: FramebufferConfig) -> Result<OpenGLContext,VideoError> {
-        let (width,height) = match config {
-            FramebufferConfig::Standard => { (640,360) },
-            FramebufferConfig::Low => { (320,180) },
-        };
-        let framebuffer = match Framebuffer::new(width,height) {
+        let framebuffer = match Framebuffer::new(config.width,config.height) {
             Some(framebuffer) => framebuffer,
             None => { return Err(VideoError::Generic) },
         };
@@ -109,8 +105,8 @@ impl OpenGLContext {
         self.framebuffer.bind();
         for layer in &self.layers {
             unsafe {
-                gl::Viewport(layer.x,layer.y,layer.width as i32,layer.height as i32);
-                gl::Scissor(layer.x,layer.y,layer.width as i32,layer.height as i32);
+                gl::Viewport(layer.x as i32,layer.y as i32,layer.width as i32,layer.height as i32);
+                gl::Scissor(layer.x as i32,layer.y as i32,layer.width as i32,layer.height as i32);
                 // TODO: begin blending
                 gl::BindTexture(gl::TEXTURE_2D,layer.framebuffer.tex);
             }

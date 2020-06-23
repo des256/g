@@ -6,12 +6,12 @@ use gl::types::GLuint;
 pub struct Framebuffer {
     fbo: GLuint,
     pub tex: GLuint,
-    pub width: u32,
-    pub height: u32,
+    pub width: usize,
+    pub height: usize,
 }
 
 impl Framebuffer {
-    pub fn new(width: u32,height: u32) -> Option<Framebuffer> {
+    pub fn new(width: usize,height: usize) -> Option<Framebuffer> {
         let mut fbo: GLuint = 0;
         let mut tex: GLuint = 0;
         unsafe {

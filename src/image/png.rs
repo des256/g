@@ -2,6 +2,7 @@
 // Desmond Germans, 2020
 
 use crate::Image;
+use crate::Pixel;
 
 // Inflate algorithm
 const LITLEN_LENGTH: [u16; 29] = [3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,51,59,67,83,99,115,131,163,195,227,258];
@@ -452,32 +453,32 @@ fn clampf(v: f32,min: f32,max: f32) -> f32 {
     }
 }
 
-fn make_lf(l: f32,gamma: f32) -> u32 {
-    let ul = (clampf(l.powf(gamma),0.0,1.0) * 255.0) as u32;
-    return 0xFF000000 | (ul << 16) | (ul << 8) | ul;
+fn make_lf<T: Pixel>(l: f32,gamma: f32) -> T {
+    let ul = (clampf(l.powf(gamma),0.0,1.0) * 255.0) as u8;
+    T::new_rgb(ul,ul,ul)
 }
 
-fn make_rgbaf(r: f32,g: f32,b: f32,a: f32,gamma: f32) -> u32 {
-    let ur = (clampf(r.powf(gamma),0.0,1.0) * 255.0) as u32;
-    let ug = (clampf(g.powf(gamma),0.0,1.0) * 255.0) as u32;
-    let ub = (clampf(b.powf(gamma),0.0,1.0) * 255.0) as u32;
-    let ua = (clampf(a.powf(gamma),0.0,1.0) * 255.0) as u32;
-    return (ua << 24) | (ur << 16) | (ug << 8) | ub;
+fn make_rgbaf<T: Pixel>(r: f32,g: f32,b: f32,a: f32,gamma: f32) -> T {
+    let ur = (clampf(r.powf(gamma),0.0,1.0) * 255.0) as u8;
+    let ug = (clampf(g.powf(gamma),0.0,1.0) * 255.0) as u8;
+    let ub = (clampf(b.powf(gamma),0.0,1.0) * 255.0) as u8;
+    let ua = (clampf(a.powf(gamma),0.0,1.0) * 255.0) as u8;
+    T::new_rgba(ur,ug,ub,ua)
 }
 
-fn make_c(c: u32,gamma: f32) -> u32 {
-    let r = (((c >> 16) & 255) as f32) / 255.0;
-    let g = (((c >> 8) & 255) as f32) / 255.0;
-    let b = ((c & 255) as f32) / 255.0;
-    let a = ((c >> 24) as f32) / 255.0;
-    let ur = (clampf(r.powf(gamma),0.0,1.0) * 255.0) as u32;
-    let ug = (clampf(g.powf(gamma),0.0,1.0) * 255.0) as u32;
-    let ub = (clampf(b.powf(gamma),0.0,1.0) * 255.0) as u32;
-    let ua = (clampf(a.powf(gamma),0.0,1.0) * 255.0) as u32;
-    return (ua << 24) | (ur << 16) | (ug << 8) | ub;
+fn make_c<T: Pixel>(c: T,gamma: f32) -> T {
+    let r = (c.r() as f32) / 255.0;
+    let g = (c.g() as f32) / 255.0;
+    let b = (c.b() as f32) / 255.0;
+    let a = (c.a() as f32) / 255.0;
+    let ur = (clampf(r.powf(gamma),0.0,1.0) * 255.0) as u8;
+    let ug = (clampf(g.powf(gamma),0.0,1.0) * 255.0) as u8;
+    let ub = (clampf(b.powf(gamma),0.0,1.0) * 255.0) as u8;
+    let ua = (clampf(a.powf(gamma),0.0,1.0) * 255.0) as u8;
+    T::new_rgba(ur,ug,ub,ua)
 }
 
-fn decode_pixels(dst: &mut [u32],src: &[u8],width: usize,height: usize,stride: usize,x0: usize,y0: usize,dx: usize,dy: usize,itype: Type,palette: &[u32; 256],gamma: f32) {
+fn decode_pixels<T: Pixel>(dst: &mut [T],src: &[u8],width: usize,height: usize,stride: usize,x0: usize,y0: usize,dx: usize,dy: usize,itype: Type,palette: &[T; 256],gamma: f32) {
     let mut sp = 0;
     match itype {
         Type::L1 => {
@@ -721,7 +722,7 @@ pub fn test(src: &[u8]) -> Option<(u32,u32)> {
     None
 }
 
-pub fn decode(src: &[u8]) -> Option<Image> {
+pub fn decode<T: Pixel>(src: &[u8]) -> Option<Image<T>> {
     if (src[0] != 0x89) ||
         (src[1] != 0x50) ||
         (src[2] != 0x4E) ||
@@ -749,8 +750,8 @@ pub fn decode(src: &[u8]) -> Option<Image> {
     let mut dp: usize = 0;
     let mut idat_found = false;
     let mut iend_found = false;
-    let mut palette: [u32; 256] = [0; 256];
-    let mut _background: u32 = 0xFF000000;
+    let mut palette = [T::zero(); 256];
+    let mut _background = T::zero();
     let mut gamma: f32 = 1.0;
     while sp < src.len() {
         let chunk_length = from_be32(&src[sp..sp + 4]) as usize;
@@ -829,7 +830,7 @@ pub fn decode(src: &[u8]) -> Option<Image> {
                     let g = src[sp + 1];
                     let b = src[sp + 2];
                     sp += 3;
-                    palette[i] = 0xFF000000 | ((r as u32) << 16) | ((g as u32) << 8) | (b as u32);
+                    palette[i] = T::new_rgb(r,g,b);
                 }
             },
             0x624B4744 => { // bKGD
@@ -839,13 +840,13 @@ pub fn decode(src: &[u8]) -> Option<Image> {
                     },
                     Type::L1 | Type::L2 | Type::L4 | Type::L8 | Type::LA8 | Type::L16 | Type::LA16 => {
                         let level = src[sp];
-                        _background = 0xFF000000 | ((level as u32) << 16) | ((level as u32) << 8) | (level as u32);
+                        _background = T::new_rgb(level,level,level);
                     },
                     _ => {
                         let r = src[sp];
                         let g = src[sp + 2];
                         let b = src[sp + 4];
-                        _background = 0xFF000000 | ((r as u32) << 16) | ((g as u32) << 8) | (b as u32);
+                        _background = T::new_rgb(r,g,b);
                     },
                 }
                 sp += chunk_length;
@@ -974,7 +975,7 @@ pub fn decode(src: &[u8]) -> Option<Image> {
             None => { return None; },
         };
         let mut sp = 0usize;
-        let mut result = Image::new(width,height);
+        let mut result = Image::<T>::new(width,height);
         for i in 0..7 {
             if apresent[i] {
                 let raw_data = unfilter(&filtered_data[sp..sp + adsize[i] as usize],aheight[i] as usize,astride[i] as usize,bpp);
@@ -1021,6 +1022,6 @@ pub fn decode(src: &[u8]) -> Option<Image> {
     }
 }
 
-pub fn encode(_image: &Image) -> Option<Vec<u8>> {
+pub fn encode<T: Pixel>(_image: &Image<T>) -> Option<Vec<u8>> {
     None
 }

@@ -1,69 +1,67 @@
-# Menus
+# Basic System
 
-## Mass Effect 2
+Create a `Video` object, using `VideoConfig` to specify the details, like so:
 
-### Log
+```
+let config = VideoConfig {
+    window: WindowConfig { width: 1280,height: 720, },
+    framebuffer: FramebufferConfig { width: 256,height: 144, },
+};
 
-Vanity Title Screen
-    Press START
+let mut video = Video::new(config).expect("Cannot open video.");
 
-Outside Screen
-    Left
-        New Game
-            Male
-                Spec Character
-            Female
-                Spec Character
-            Import ME1 Character
-                Service History
-        Extras
-        New Content Available
+video.set_window_title("My Game");
+```
 
-    Right
-        Cerberus Daily News
+The window size is the initial size of the window on the screen. The framebuffer size is the size of the internal framebuffer that is used as fixed game screen.
 
-Title Logo
+Now, in the main loop, call either `wait_for_event` or `poll_for_event` methods to receive the next event. `wait_for_event` blocks until something happens, and then returns `Some(event)` with the event, or `None` if there was an error. `poll_for_event` does not block, but when something happens, it returns `Some(event)` with the event, or `None` otherwise.
 
-Service History
-    left = menu, right = details
-    Name
-    Rank
-    Military Specialization
-    Psychological Profile
-    Status of Wrex
-    Missing in Action
-    Council History
+The event is of type `Event`, which is an enum:
 
-First Intro Sequence
-    Electronic Arts Presents
-    a BioWare Production
-    FMV of Miranda and Illusive Man
-    Intro text
-    FMV with Normandy being torn apart by the Collectors
+```
+pub enum Button {
+    Left,
+    Middle,
+    Right,
+}
 
-    Small playable part to learn the controls
+pub enum Wheel {
+    Up,
+    Down,
+    Left,
+    Right,
+}
 
-    FMV where Normandy is destroyed and Shepard dies
+pub enum Event {
+    KeyPress(u8),
+    KeyRelease(u8),
+    MousePress(i32,i32,Button),
+    MouseRelease(i32,i32,Button),
+    MouseWheel(Wheel),
+    MouseMove(i32,i32),
+    Paint(i32,i32,u32,u32),
+    Resize(u32,u32),
+    Close,
+}
+```
 
-Title Logo
+For now, `Paint()` is handled automatically, and currently renders a list of layers. Each layer is a rectangular area on the screen, that blends together with the underlying layers. The idea is that the map is one layer, a HUD, popup messages, speech text, etc.
 
-Second Intro Sequence
-    FMV where they rebuild Shepard
+Layers are rendered with the layer shader, which can be configured to do a variety of postprocessing effects on that layer. Finally, the entire framebuffer is rendered to screen with the final shader, which also has the ability to do a variety of postprocessing effects.
 
-Lazarus Project Editor
-    Accept/Default/Custom Face
-    Class Selection
+## Experiment: Print Each Event
 
-Third Intro Sequence
-    FMV Shepard on bed, Miranda helping
-    FMV Wake up for real, but there is an attack
+`test-window` opens a `Video` object, and displays each event as it occurs.
 
-Playable First Mission
+## Experiment: Display Pixel Art
 
-### Chat Options
+`test-image` opens a `Video` object, loads an image into a texture, and displays it as layer.
 
-Left side: dig deeper, including charm and intimidate; in the center sometimes Investigate-option to dig deeper
-Right side: paragon, neutral or renegade continuation
+# Rendering the Map
 
-## Skyrim
+A map has multiple planes. The lower planes are generally the background data, the middle planes have some structural updates and additions, and the top planes contain the small clutter. Each plane draws from a different tile texture. Each tile texture contains 16x16 tiles. The map indices are uvec?, and each bit references something specific.
 
+## Experiment: Simple Map
+
+`test-map1` opens a `Video` object, loads a tileset, builds a small map and displays it as layer.

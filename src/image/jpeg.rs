@@ -2,6 +2,7 @@
 // Desmond Germans, 2020
 
 use crate::Image;
+use crate::Pixel;
 
 #[derive(Copy,Clone)]
 enum Type {
@@ -699,21 +700,21 @@ fn convert_blocks(coeffs: &mut [i32],count: usize,itype: Type,qtable: &[[i32; 64
 	}
 }
 
-fn draw_rgb(image: &mut Image,px: usize,py: usize,r: i32,g: i32,b: i32) {
+fn draw_rgb<T: Pixel>(image: &mut Image<T>,px: usize,py: usize,r: i32,g: i32,b: i32) {
 	let r = if r < 0 { 0 } else { if r > 255 { 255 } else { r as u8 } };
 	let g = if g < 0 { 0 } else { if g > 255 { 255 } else { g as u8 } };
 	let b = if b < 0 { 0 } else { if b > 255 { 255 } else { b as u8 } };
-	image.set_pixel(px as i32,py as i32,0xFF000000 | ((r as u32) << 16) | ((g as u32) << 8) | (b as u32));
+	image.set_pixel(px as i32,py as i32,T::new_rgb(r,g,b));
 }
 
-fn draw_yuv(image: &mut Image,px: usize,py: usize,y: i32,u: i32,v: i32) {
+fn draw_yuv<T: Pixel>(image: &mut Image<T>,px: usize,py: usize,y: i32,u: i32,v: i32) {
 	let r = ((y << 8) + 359 * v) >> 8;
 	let g = ((y << 8) - 88 * u - 183 * v) >> 8;
 	let b = ((y << 8) + 454 * u) >> 8;
 	draw_rgb(image,px,py,r,g,b);
 }
 
-fn draw_macroblock_y(image: &mut Image,x0: usize,y0: usize,width: usize,height: usize,coeffs: &[i32]) {
+fn draw_macroblock_y<T: Pixel>(image: &mut Image<T>,x0: usize,y0: usize,width: usize,height: usize,coeffs: &[i32]) {
 	for i in 0..height {
 		for k in 0..width {
 			draw_yuv(image,x0 + k,y0 + i,(coeffs[i * 8 + k] + 128) as i32,0,0);
@@ -721,7 +722,7 @@ fn draw_macroblock_y(image: &mut Image,x0: usize,y0: usize,width: usize,height: 
 	}
 }
 
-fn draw_macroblock_yuv420(image: &mut Image,x0: usize,y0: usize,width: usize,height: usize,coeffs: &[i32]) {
+fn draw_macroblock_yuv420<T: Pixel>(image: &mut Image<T>,x0: usize,y0: usize,width: usize,height: usize,coeffs: &[i32]) {
 	for i in 0..height {
 		for k in 0..width {
 			let by = (i >> 3) * 2 + (k >> 3);
@@ -737,7 +738,7 @@ fn draw_macroblock_yuv420(image: &mut Image,x0: usize,y0: usize,width: usize,hei
 	}
 }
 
-fn draw_macroblock_yuv422(image: &mut Image,x0: usize,y0: usize,width: usize,height: usize,coeffs: &[i32]) {
+fn draw_macroblock_yuv422<T: Pixel>(image: &mut Image<T>,x0: usize,y0: usize,width: usize,height: usize,coeffs: &[i32]) {
 	for i in 0..height {
 		for k in 0..width {
 			let by = k >> 3;
@@ -751,7 +752,7 @@ fn draw_macroblock_yuv422(image: &mut Image,x0: usize,y0: usize,width: usize,hei
 	}
 }
 
-fn draw_macroblock_yuv440(image: &mut Image,x0: usize,y0: usize,width: usize,height: usize,coeffs: &[i32]) {
+fn draw_macroblock_yuv440<T: Pixel>(image: &mut Image<T>,x0: usize,y0: usize,width: usize,height: usize,coeffs: &[i32]) {
 	for i in 0..height {
 		for k in 0..width {
 			let by = i >> 3;
@@ -765,7 +766,7 @@ fn draw_macroblock_yuv440(image: &mut Image,x0: usize,y0: usize,width: usize,hei
 	}
 }
 
-fn draw_macroblock_yuv444(image: &mut Image,x0: usize,y0: usize,width: usize,height: usize,coeffs: &[i32]) {
+fn draw_macroblock_yuv444<T: Pixel>(image: &mut Image<T>,x0: usize,y0: usize,width: usize,height: usize,coeffs: &[i32]) {
 	for i in 0..height {
 		for k in 0..width {
 			let y = coeffs[i * 8 + k] + 128;
@@ -776,7 +777,7 @@ fn draw_macroblock_yuv444(image: &mut Image,x0: usize,y0: usize,width: usize,hei
 	}
 }
 
-fn draw_macroblock_rgb444(image: &mut Image,x0: usize,y0: usize,width: usize,height: usize,coeffs: &[i32]) {
+fn draw_macroblock_rgb444<T: Pixel>(image: &mut Image<T>,x0: usize,y0: usize,width: usize,height: usize,coeffs: &[i32]) {
 	for i in 0..height {
 		for k in 0..width {
 			let r = coeffs[i * 8 + k] + 128;
@@ -813,7 +814,7 @@ pub fn test(src: &[u8]) -> Option<(u32,u32)> {
 	None
 }
 
-pub fn decode(src: &[u8]) -> Option<Image> {
+pub fn decode<T: Pixel>(src: &[u8]) -> Option<Image<T>> {
 	if from_be16(&src[0..2]) != 0xFFD8 {
 		return None;
 	}
@@ -1113,6 +1114,6 @@ pub fn decode(src: &[u8]) -> Option<Image> {
 	None
 }
 
-pub fn encode(_image: &Image) -> Option<Vec<u8>> {
+pub fn encode<T: Pixel>(_image: &Image<T>) -> Option<Vec<u8>> {
 	None
 }

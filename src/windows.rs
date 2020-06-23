@@ -294,12 +294,12 @@ impl Video {
         };
         gl::load_with(|s| load_function(opengl32_hinstance,s));
         let (window_width,window_height) = match config.window {
+            WindowConfig::High => {
+                (1280,720)
+            },
             WindowConfig::Standard => {
                 (640,360)
             },
-            WindowConfig::High => {
-                (1280,720)
-            }
         };
         let window_style = WS_OVERLAPPEDWINDOW;
         let window_exstyle = WS_EX_APPWINDOW | WS_EX_WINDOWEDGE;

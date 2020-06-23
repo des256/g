@@ -1,26 +1,32 @@
 // G - Image
 // Desmond Germans, 2020
 
-pub struct Image {
+use crate::Pixel;
+use std::marker::PhantomData;
+use crate::Zero;
+
+pub struct Image<T> {
     pub width: u32,
     pub height: u32,
-    pub data: Box<[u32]>,
+    pub data: Box<[T]>,
+    phantom: PhantomData<T>,
 }
 
-impl Image {
-    pub fn new(width: u32,height: u32) -> Image {
+impl<T: Clone + Copy + Zero> Image<T> {
+    pub fn new(width: u32,height: u32) -> Image<T> {
         Image {
             width: width,
             height: height,
-            data: vec![0u32; (width * height) as usize].into_boxed_slice(),
+            data: vec![T::zero(); (width * height) as usize].into_boxed_slice(),
+            phantom: PhantomData,
         }
     }
 
-    pub fn pixel(&self,x: i32,y: i32) -> u32 {
+    pub fn pixel(&self,x: i32,y: i32) -> T {
         self.data[(y * self.width as i32 + x) as usize]
     }
 
-    pub fn set_pixel(&mut self,x: i32,y: i32,p: u32) {
+    pub fn set_pixel(&mut self,x: i32,y: i32,p: T) {
         self.data[(y * self.width as i32 + x) as usize] = p;
     }
 }
@@ -70,32 +76,32 @@ pub fn test(src: &[u8]) -> Option<(u32,u32)> {
 }
 
 #[allow(dead_code)]
-pub fn decode(src: &[u8]) -> Option<Image> {
-    if let Some(image) = bmp::decode(src) {
+pub fn decode<T: Pixel>(src: &[u8]) -> Option<Image<T>> {
+    if let Some(image) = bmp::decode::<T>(src) {
         Some(image)
     }
-    else if let Some(image) = png::decode(src) {
+    else if let Some(image) = png::decode::<T>(src) {
         Some(image)
     }
-    else if let Some(image) = jpeg::decode(src) {
+    else if let Some(image) = jpeg::decode::<T>(src) {
         Some(image)
     }
-    else if let Some(image) = gif::decode(src) {
+    else if let Some(image) = gif::decode::<T>(src) {
         Some(image)
     }
-    else if let Some(image) = tga::decode(src) {
+    else if let Some(image) = tga::decode::<T>(src) {
         Some(image)
     }
-    else if let Some(image) = tiff::decode(src) {
+    else if let Some(image) = tiff::decode::<T>(src) {
         Some(image)
     }
-    else if let Some(image) = pbm::decode(src) {
+    else if let Some(image) = pbm::decode::<T>(src) {
         Some(image)
     }
-    else if let Some(image) = xbm::decode(src) {
+    else if let Some(image) = xbm::decode::<T>(src) {
         Some(image)
     }
-    else if let Some(image) = webp::decode(src) {
+    else if let Some(image) = webp::decode::<T>(src) {
         Some(image)
     }
     else {

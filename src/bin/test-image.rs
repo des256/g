@@ -13,22 +13,25 @@ use g::Texture2D;
 use g::Shader;
 use g::SetUniform;
 use g::Event;
+use g::ARGB8;
+use g::Texture2DUpload;
 
 fn main() {
+    let fbconfig = FramebufferConfig { width: 256,height: 144, };
     let mut video = match Video::new(VideoConfig {
-        window: WindowConfig::High,
-        framebuffer: FramebufferConfig::Low,
+        window: WindowConfig { width: 1280,height: 720, },
+        framebuffer: fbconfig,
     }) {
         Ok(video) => video,
         Err(_) => { panic!("Cannot open video."); },
     };
     video.set_window_title("Image Test");
-    let layer = Layer::new(0,0,320,180).expect("cannot create layer");
-    let mut file = File::open("try/test.png").expect("cannot open file");
+    let layer = Layer::new(0,0,fbconfig.width,fbconfig.height).expect("cannot create layer");
+    let mut file = File::open("try/256x144.png").expect("cannot open file");
     let mut buffer: Vec<u8> = Vec::new();
     file.read_to_end(&mut buffer).expect("unable to read file");
-    let image = decode(&buffer).expect("unable to decode");
-    let mut texture = Texture2D::new(320,180);
+    let image = decode::<ARGB8>(&buffer).expect("unable to decode");
+    let mut texture = Texture2D::<ARGB8>::new(fbconfig.width,fbconfig.height);
     texture.upload(0,0,&image);
 
     let vs = r#"

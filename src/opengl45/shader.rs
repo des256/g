@@ -138,7 +138,17 @@ impl SetUniform<[f32; 2]> for Shader {
         let cname = CString::new(name).unwrap();
         let res = unsafe { gl::GetUniformLocation(self.sp,cname.as_ptr() as *const GLchar) };
         unsafe {
-            gl::Uniform4fv(res,1,&value as *const [f32; 2] as *const GLfloat);
+            gl::Uniform2fv(res,1,&value as *const [f32; 2] as *const GLfloat);
+        }
+    }
+}
+
+impl SetUniform<[u32; 2]> for Shader {
+    fn set_uniform(&self,name: &str,value: [u32; 2]) {
+        let cname = CString::new(name).unwrap();
+        let res = unsafe { gl::GetUniformLocation(self.sp,cname.as_ptr() as *const GLchar) };
+        unsafe {
+            gl::Uniform2uiv(res,1,&value as *const [u32; 2] as *const GLuint);
         }
     }
 }
@@ -159,6 +169,16 @@ impl SetUniform<i32> for Shader {
         let res = unsafe { gl::GetUniformLocation(self.sp,cname.as_ptr() as *const GLchar) };
         unsafe {
             gl::Uniform1i(res,value);
+        }
+    }
+}
+
+impl SetUniform<u32> for Shader {
+    fn set_uniform(&self,name: &str,value: u32) {
+        let cname = CString::new(name).unwrap();
+        let res = unsafe { gl::GetUniformLocation(self.sp,cname.as_ptr() as *const GLchar) };
+        unsafe {
+            gl::Uniform1ui(res,value);
         }
     }
 }
