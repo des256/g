@@ -293,21 +293,13 @@ impl Video {
             )
         };
         gl::load_with(|s| load_function(opengl32_hinstance,s));
-        let (window_width,window_height) = match config.window {
-            WindowConfig::High => {
-                (1280,720)
-            },
-            WindowConfig::Standard => {
-                (640,360)
-            },
-        };
         let window_style = WS_OVERLAPPEDWINDOW;
         let window_exstyle = WS_EX_APPWINDOW | WS_EX_WINDOWEDGE;
         let mut rect = RECT {
             left: 0,
-            right: window_width,
+            right: config.window.width as i32,
             top: 0,
-            bottom: window_height,
+            bottom: config.window.height as i32,
         };
         unsafe {
             AdjustWindowRectEx(
@@ -435,8 +427,8 @@ impl Video {
             hglrc: hglrc,
             queue: VecDeque::new(),
             opengl: opengl,
-            window_width: window_width as u32,
-            window_height: window_height as u32,
+            window_width: config.window.width as u32,
+            window_height: config.window.height as u32,
         })
     }
 
