@@ -1,7 +1,7 @@
 // G - Image test
 // Desmond Germans, 2020
 
-use g::Video;
+/*use g::Video;
 use g::VideoConfig;
 use g::WindowConfig;
 use g::FramebufferConfig;
@@ -176,4 +176,7 @@ fn main() {
             _ => { },
         }    
     }
+}*/
+
+fn main() {
 }

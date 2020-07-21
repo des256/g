@@ -1,38 +1,29 @@
 // G - Image test
 // Desmond Germans, 2020
 
-use g::Video;
-use g::VideoConfig;
-use g::WindowConfig;
-use g::FramebufferConfig;
-use g::Layer;
+use e::*;
+use g::*;
+use std::rc::Rc;
 use std::fs::File;
 use std::io::prelude::*;
-use g::decode;
-use g::Texture2D;
-use g::Shader;
-use g::SetUniform;
-use g::Event;
-use g::ARGB8;
-use g::Texture2DUpload;
 
 fn main() {
-    let fbconfig = FramebufferConfig { width: 256,height: 144, };
-    let mut video = match Video::new(VideoConfig {
-        window: WindowConfig { width: 1280,height: 720, },
-        framebuffer: fbconfig,
-    }) {
-        Ok(video) => video,
-        Err(_) => { panic!("Cannot open video."); },
+    let system = Rc::new(match System::new() {
+        Ok(system) => system,
+        Err(_) => { panic!("Cannot open system."); },
+    });
+
+    let engine = match Engine::new(&system,vec2!(1024,576),vec2!(256,144)) {
+        Ok(engine) => engine,
+        Err(_) => { panic!("Cannot open engine."); },
     };
-    video.set_window_title("Image Test");
-    let layer = Layer::new(0,0,fbconfig.width,fbconfig.height).expect("cannot create layer");
+
+    let layer = Layer::new(&engine,rect!(0,0,256,144)).expect("cannot create layer");
     let mut file = File::open("try/256x144.png").expect("cannot open file");
     let mut buffer: Vec<u8> = Vec::new();
     file.read_to_end(&mut buffer).expect("unable to read file");
     let image = decode::<ARGB8>(&buffer).expect("unable to decode");
-    let mut texture = Texture2D::<ARGB8>::new(fbconfig.width,fbconfig.height);
-    texture.upload(0,0,&image);
+    let texture = engine.system.create_texture2d::<ARGB8>(&image).expect("unable to load texture");
 
     let vs = r#"
         #version 420 core
@@ -52,31 +43,21 @@ fn main() {
             fs_output = texture2D(u_texture,f_tex);
         }
     "#;
-    let shader = Shader::new(vs,None,fs).expect("cannot create shader");
-    unsafe {
-        println!("rendering test image");
-        layer.bind();
-        gl::ClearColor(1.0,1.0,0.0,1.0);
-        gl::Clear(gl::COLOR_BUFFER_BIT);
-        texture.bind();
-        shader.bind();
-        shader.set_uniform("u_texture",0);
-        gl::BindBuffer(gl::ARRAY_BUFFER,video.opengl.quad_vbo);
-        gl::EnableVertexAttribArray(0);
-        gl::VertexAttribPointer(0,2,gl::FLOAT,gl::FALSE,0,0 as *const gl::types::GLvoid);
-        gl::DrawArrays(gl::TRIANGLE_FAN,0,4);
-        gl::DisableVertexAttribArray(0);
-        gl::Flush();
-        layer.unbind();
-    }
-    video.opengl.layers.push(layer);
-    loop {
-        let event = video.wait_for_event().expect("Event queue error.");
-        match event {
-            Event::Close => {
-                return;
-            },
-            _ => { },
-        }    
+    let shader = engine.system.create_shader(vs,None,fs).expect("cannot create shader");
+
+    engine.bind_layer(&layer);
+    engine.system.clear(RGB8::from(0xFFFFFF00));
+    engine.system.bind_texture2d(0,&texture);
+    engine.system.bind_shader(&shader);
+    engine.system.set_uniform("u_texture",0);
+    engine.system.bind_vertexbuffer(&engine.quad_vertexbuffer);
+    engine.system.draw_triangle_fan(4);
+    engine.unbind_layer();
+
+    engine.layers.borrow_mut().push(layer);
+
+    while engine.running {
+        system.wait();
+        system.pump();
     }
 }

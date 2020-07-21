@@ -20,10 +20,5 @@ debug = false
 lto = false
 codegen-units = 14
 
-# Linux generic
-
 [dependencies]
-x11 = { version = "2.18.1", features = ["xlib","glx"] }
-xcb = { version = "0.8", features = ["xlib_xcb","dri2"] }
-gl = { version = "0.14.0" }
-alsa = { version = "0.3.0" }
+e = { path = "../e" }
