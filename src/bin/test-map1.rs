@@ -1,110 +1,58 @@
-// G - Image test
+// G - Map test
 // Desmond Germans, 2020
 
-/*use g::Video;
-use g::VideoConfig;
-use g::WindowConfig;
-use g::FramebufferConfig;
-use g::Layer;
+use e::*;
+use g::*;
+use std::rc::Rc;
 use std::fs::File;
 use std::io::prelude::*;
-use g::decode;
-use g::Texture2D;
-use g::Shader;
-use g::SetUniform;
-use g::Event;
-use g::ARGB8;
-use g::Texture2DUpload;
-use std::ffi::c_void;
-use g::OpenGLFormat;
-use gl::types::GLenum;
-use gl::types::GLuint;
-
-#[derive(Copy,Clone)]
-struct TileIndex {
-    d: u32,
-}
-
-impl TileIndex {
-    pub fn new_empty() -> TileIndex {
-        TileIndex {
-            d: 0x00000000,
-        }
-    }
-}
-
-impl OpenGLFormat for TileIndex {
-    fn gl_internal_format() -> GLuint { gl::R32UI as GLuint }
-    fn gl_format() -> GLenum { gl::RED_INTEGER }
-    fn gl_type() -> GLenum { gl::UNSIGNED_INT }
-}
-
-struct Map {
-    width: usize,
-    height: usize,
-    pub data: Box<[TileIndex]>,
-}
-
-impl Map {
-    pub fn new(width: usize,height: usize) -> Map {
-        Map {
-            width: width,
-            height: height,
-            data: vec![TileIndex::new_empty(); width * height].into_boxed_slice(),
-        }
-    }
-}
-
-impl Texture2DUpload<Map> for Texture2D<TileIndex> {
-    fn upload(&mut self,x: isize,y: isize,source: &Map) {
-        unsafe {
-            gl::TexSubImage2D(gl::TEXTURE_2D,0,x as i32,y as i32,source.width as i32,source.height as i32,TileIndex::gl_format(),TileIndex::gl_type(),source.data.as_ptr() as *const c_void);
-        }
-    }    
-}
-
-fn load_texture(name: &str) -> Texture2D<ARGB8> {
-    let mut file = File::open(name).expect("cannot open file");
-    let mut buffer: Vec<u8> = Vec::new();
-    file.read_to_end(&mut buffer).expect("unable to read file");
-    let image = decode::<ARGB8>(&buffer).expect("unable to decode");
-    let mut texture = Texture2D::<ARGB8>::new(image.width as usize,image.height as usize);
-    texture.upload(0,0,&image);
-    texture
-}
 
 fn main() {
-    let config = VideoConfig {
-        window: WindowConfig { width: 1280,height: 720, },
-        framebuffer: FramebufferConfig { width: 256,height: 144, },
-    };
-    let mut video = match Video::new(config) {
-        Ok(video) => video,
-        Err(_) => { panic!("Cannot open video."); },
-    };
-    video.set_window_title("Image Test");
-    let layer = Layer::new(0,0,config.framebuffer.width,config.framebuffer.height).expect("cannot create layer");
-    let tiles_texture = load_texture("try/8x8tiles.png");
-    let mut map = Map::new(4,4);
-    map.data[0] = TileIndex { d: 0x00000001, };
-    map.data[1] = TileIndex { d: 0x00000001, };
-    map.data[2] = TileIndex { d: 0x00000001, };
-    map.data[3] = TileIndex { d: 0x00000000, };
-    map.data[4] = TileIndex { d: 0x00000001, };
-    map.data[5] = TileIndex { d: 0x00000003, };
-    map.data[6] = TileIndex { d: 0x00000001, };
-    map.data[7] = TileIndex { d: 0x00000000, };
-    map.data[8] = TileIndex { d: 0x00000001, };
-    map.data[9] = TileIndex { d: 0x00000001, };
-    map.data[10] = TileIndex { d: 0x00000001, };
-    map.data[11] = TileIndex { d: 0x00000000, };
-    map.data[12] = TileIndex { d: 0x00000002, };
-    map.data[13] = TileIndex { d: 0x00000002, };
-    map.data[14] = TileIndex { d: 0x00000002, };
-    map.data[15] = TileIndex { d: 0x00000002, };
-    let mut map_texture = Texture2D::<TileIndex>::new(map.width,map.height);
-    map_texture.upload(0,0,&map);
+    // open system
+    let system = Rc::new(System::new().expect("Cannot open system."));
 
+    // create GPU graphics context
+    let graphics = Rc::new(gpu::Graphics::new(&system).expect("Cannot open graphics."));
+
+    // create game engine
+    let engine = Rc::new(Engine::new(&system,&graphics,vec2!(1024,576),vec2!(256,144)).expect("Cannot open engine."));
+
+    // create layer for game engine
+    let layer = Rc::new(Layer::new(&engine,rect!(0,0,256,144)).expect("cannot create layer"));
+
+    // load image into texture
+    let mut file = File::open("try/8x8tiles.png").expect("cannot open file");
+    let mut buffer: Vec<u8> = Vec::new();
+    file.read_to_end(&mut buffer).expect("unable to read file");
+    let image = image::decode::<pixel::ARGB8>(&buffer).expect("unable to decode");
+    let atlas_texture = gpu::Texture2D::new(&graphics,&image).expect("unable to upload tiles texture");
+
+    // create map texture
+    let mut map = Mat::<u32>::new(vec2!(4,4));
+
+    map.set(vec2!(0,0),1);
+    map.set(vec2!(0,0),1);
+    map.set(vec2!(0,0),1);
+    map.set(vec2!(0,0),0);
+
+    map.set(vec2!(0,0),1);
+    map.set(vec2!(0,0),3);
+    map.set(vec2!(0,0),1);
+    map.set(vec2!(0,0),0);
+
+    map.set(vec2!(0,0),1);
+    map.set(vec2!(0,0),1);
+    map.set(vec2!(0,0),1);
+    map.set(vec2!(0,0),0);
+
+    map.set(vec2!(0,0),2);
+    map.set(vec2!(0,0),2);
+    map.set(vec2!(0,0),2);
+    map.set(vec2!(0,0),2);
+
+    let map_texture = gpu::Texture2D::new(&graphics,&map).expect("unable to upload map texture");
+
+    // create shader
     let vs = r#"
         #version 420 core
         layout(location = 0) in vec2 v_pos;
@@ -142,41 +90,26 @@ fn main() {
             fs_output = vec4(d.x,d.y,d.z,1.0);
         }
     "#;
-    let shader = Shader::new(vs,None,fs).expect("cannot create shader");
-    unsafe {
-        layer.bind();
-        gl::ClearColor(1.0,1.0,0.0,1.0);
-        gl::Clear(gl::COLOR_BUFFER_BIT);
-        shader.bind();
-        shader.set_uniform("map_texture",0);
-        shader.set_uniform("atlas_texture",1);
-        shader.set_uniform("offset",[0.125,0.125]);
-        shader.set_uniform("tiles_per_pixel",[0.125f32,0.125f32]);
-        shader.set_uniform("pixels_per_layer",[config.framebuffer.width as f32,config.framebuffer.height as f32]);
-        shader.set_uniform("maps_per_tile",[0.25f32,0.25f32]);
-        gl::ActiveTexture(gl::TEXTURE0 + 1);
-        tiles_texture.bind();
-        gl::ActiveTexture(gl::TEXTURE0 + 0);  // bind 0 last, for some obscure reason...
-        map_texture.bind();
-        gl::BindBuffer(gl::ARRAY_BUFFER,video.opengl.quad_vbo);
-        gl::EnableVertexAttribArray(0);
-        gl::VertexAttribPointer(0,2,gl::FLOAT,gl::FALSE,0,0 as *const gl::types::GLvoid);
-        gl::DrawArrays(gl::TRIANGLE_FAN,0,4);
-        gl::DisableVertexAttribArray(0);
-        gl::Flush();
-        layer.unbind();
-    }
-    video.opengl.layers.push(layer);
-    loop {
-        let event = video.wait_for_event().expect("Event queue error.");
-        match event {
-            Event::Close => {
-                return;
-            },
-            _ => { },
-        }    
-    }
-}*/
+    let shader = gpu::Shader::new(&graphics,vs,None,fs).expect("cannot create shader");
+    
+    // draw image onto layer
+    graphics.bind_target(&layer.framebuffer);
+    graphics.clear(pixel::ARGB8::from(0xFFFFFF00));
+    graphics.bind_texture(0,&atlas_texture);
+    graphics.bind_texture(1,&map_texture);
+    graphics.bind_shader(&shader);
+    graphics.set_uniform("atlas_texture",0);
+    graphics.set_uniform("map_texture",1);
+    graphics.set_uniform("offset",vec2!(0.125,0.125));
+    graphics.set_uniform("tiles_per_pixel",vec2!(0.125,0.125));
+    graphics.set_uniform("pixels_per_layer",vec2!(engine.framebuffer.size.x as f32,engine.framebuffer.size.y as f32));
+    graphics.set_uniform("maps_per_tile",vec2!(0.25,0.25));
+    graphics.bind_vertexbuffer(&engine.quad_vertexbuffer);
+    graphics.draw_triangle_fan(4);
 
-fn main() {
+    // add layer to engine
+    engine.layers.borrow_mut().push(Rc::clone(&layer));
+
+    // run the engine
+    engine.run();
 }

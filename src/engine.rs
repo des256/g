@@ -13,7 +13,7 @@ pub struct Engine {
     pub(crate) graphics: Rc<gpu::Graphics>,
     pub(crate) window: Rc<Window>,
     pub layers: RefCell<Vec<Rc<Layer>>>,
-    pub(crate) framebuffer: Rc<gpu::Framebuffer>,
+    pub framebuffer: Rc<gpu::Framebuffer>,
     pub(crate) layer_shader: gpu::Shader,
     pub(crate) final_shader: gpu::Shader,
     pub quad_vertexbuffer: gpu::VertexBuffer<Vec2<f32>>,
