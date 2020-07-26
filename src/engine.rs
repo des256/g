@@ -12,12 +12,11 @@ pub struct Engine {
     pub(crate) system: Rc<System>,
     pub(crate) graphics: Rc<gpu::Graphics>,
     pub(crate) window: Rc<Window>,
-    pub(crate) layers: RefCell<Vec<Rc<Layer>>>,
+    pub layers: RefCell<Vec<Rc<Layer>>>,
     pub(crate) framebuffer: Rc<gpu::Framebuffer>,
     pub(crate) layer_shader: gpu::Shader,
     pub(crate) final_shader: gpu::Shader,
-    pub(crate) quad_vertexbuffer: gpu::VertexBuffer<Vec2<f32>>,
-    pub(crate) running: bool,
+    pub quad_vertexbuffer: gpu::VertexBuffer<Vec2<f32>>,
 }
 
 static QUAD: [Vec2<f32>; 4] = [
@@ -117,7 +116,6 @@ impl Engine {
             layer_shader: layer_shader,
             final_shader: final_shader,
             quad_vertexbuffer: quad_vertexbuffer,
-            running: true,
         };
 
         Ok(engine)
@@ -130,7 +128,7 @@ impl Engine {
             self.system.wait();
             for event in self.system.poll(&self.window) {
                 match event {
-                    Event::Paint(_) => {
+                    Event::Render => {
                         let fb_aspect = (self.framebuffer.size.x as f32) / (self.framebuffer.size.y as f32);
                         let win_aspect = (self.window.size.get().x as f32) / (self.window.size.get().y as f32);
                         let scale = if win_aspect > fb_aspect {

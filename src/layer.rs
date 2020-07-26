@@ -6,8 +6,8 @@ use std::rc::Rc;
 
 /// Game engine compositing layer.
 pub struct Layer {
-    pub(crate) r: Rect<isize>,
-    pub(crate) framebuffer: Rc<gpu::Framebuffer>,
+    pub(crate) _r: Rect<isize>,
+    pub framebuffer: Rc<gpu::Framebuffer>,
 }
 
 impl Layer {
@@ -21,7 +21,7 @@ impl Layer {
             Err(_) => { return Err(EngineError::Generic); },
         });
         Ok(Layer {
-            r: r,
+            _r: r,
             framebuffer: framebuffer,
         })
     }
