@@ -7,14 +7,17 @@ use std::fmt::Debug;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-pub struct Engine<'a> {
-    pub system: Rc<System<'a>>,
-    pub layers: RefCell<Vec<Layer>>,
-    framebuffer: Framebuffer,
-    layer_shader: Shader,
-    final_shader: Shader,
-    pub quad_vertexbuffer: VertexBuffer<Vec2<f32>>,
-    pub running: bool,
+/// Game engine context.
+pub struct Engine {
+    pub(crate) system: Rc<System>,
+    pub(crate) graphics: Rc<gpu::Graphics>,
+    pub(crate) window: Rc<Window>,
+    pub(crate) layers: RefCell<Vec<Rc<Layer>>>,
+    pub(crate) framebuffer: Rc<gpu::Framebuffer>,
+    pub(crate) layer_shader: gpu::Shader,
+    pub(crate) final_shader: gpu::Shader,
+    pub(crate) quad_vertexbuffer: gpu::VertexBuffer<Vec2<f32>>,
+    pub(crate) running: bool,
 }
 
 static QUAD: [Vec2<f32>; 4] = [
@@ -34,17 +37,27 @@ impl Debug for EngineError {
     }
 }
 
-impl<'a> Engine<'a> {
-    pub fn new(system: &Rc<System<'a>>,winsize: Vec2<usize>,fbsize: Vec2<usize>) -> Result<Engine<'a>,EngineError> {
+impl Engine {
+    /// Create new game engine context.
+    /// # Arguments
+    /// * `system` - System to create game engine for.
+    /// * `graphics` - GPU Graphics context to create game engine for.
+    /// * `winsize` - Initial screen window size.
+    /// * `fbsize` - Compositing framebuffer size.
+    pub fn new(system: &Rc<System>,graphics: &Rc<gpu::Graphics>,winsize: Vec2<usize>,fbsize: Vec2<usize>) -> Result<Engine,EngineError> {
 
-        let framebuffer = match system.create_framebuffer(fbsize) {
+        let window = Rc::new(match Window::new(&system,rect!(50,50,winsize.x as isize,winsize.y as isize),"Engine Window") {
+            Ok(window) => window,
+            Err(_) => { return Err(EngineError::Generic); },
+        });
+
+        let framebuffer = Rc::new(match gpu::Framebuffer::new(&graphics,fbsize) {
             Ok(framebuffer) => framebuffer,
-            Err(_) => { return Err(EngineError::Generic) },
-        };
+            Err(_) => { return Err(EngineError::Generic); },
+        });
 
         let layer_vs = r#"
             #version 420 core
-            uniform vec4 u_rect;
             layout(location = 0) in vec2 v_pos;
             out vec2 f_tex;
             void main() {
@@ -61,18 +74,19 @@ impl<'a> Engine<'a> {
                 fs_output = texture2D(u_texture,f_tex);
             }
         "#;
-        let layer_shader = match system.create_shader(layer_vs,None,layer_fs) {
+        let layer_shader = match gpu::Shader::new(&graphics,layer_vs,None,layer_fs) {
             Ok(shader) => shader,
             Err(_) => { return Err(EngineError::Generic); },
         };
 
         let final_vs = r#"
             #version 420 core
+            uniform vec2 u_scale;
             layout(location = 0) in vec2 v_pos;
             out vec2 f_tex;
             void main() {
                 f_tex = vec2(v_pos.x,v_pos.y);
-                gl_Position = vec4(-1.0 + 2.0 * v_pos.x,1.0 - 2.0 * v_pos.y,0.0,1.0);  // last stage swaps Y-output
+                gl_Position = vec4(u_scale.x * (-1.0 + 2.0 * v_pos.x),u_scale.y * (1.0 - 2.0 * v_pos.y),0.0,1.0);  // last stage swaps Y-output
             }
         "#;
         let final_fs = r#"
@@ -84,18 +98,20 @@ impl<'a> Engine<'a> {
                 fs_output = texture2D(u_texture,f_tex);
             }
         "#;
-        let final_shader = match system.create_shader(final_vs,None,final_fs) {
+        let final_shader = match gpu::Shader::new(&graphics,final_vs,None,final_fs) {
             Ok(shader) => shader,
             Err(_) => { return Err(EngineError::Generic); },
         };
 
-        let quad_vertexbuffer = match system.create_vertexbuffer(QUAD.to_vec()) {
+        let quad_vertexbuffer = match gpu::VertexBuffer::new(&graphics,QUAD.to_vec()) {
             Ok(vertexbuffer) => vertexbuffer,
             Err(_) => { return Err(EngineError::Generic); },
         };
 
         let engine = Engine {
             system: Rc::clone(system),
+            graphics: Rc::clone(graphics),
+            window: window,
             layers: RefCell::new(Vec::new()),
             framebuffer: framebuffer,
             layer_shader: layer_shader,
@@ -107,49 +123,51 @@ impl<'a> Engine<'a> {
         Ok(engine)
     }
 
-    pub fn wait(&self) {
-        self.system.wait();
-    }
-
-    pub fn pump(&self) {
-        self.system.pump();
-    }
-
-    pub fn running(&self) -> bool {
-        self.running
-    }
-}
-
-impl<'a> Handler for Engine<'a> {
-    fn handle(&mut self,event: Event) {
-        match event {
-            Event::Paint(_size,_r) => {
-                self.system.bind_framebuffer(&self.framebuffer);
-                for layer in &*self.layers.borrow() {
-                    self.system.bind_framebuffer_as_texture2d(0,&layer.framebuffer);
-                    self.system.bind_shader(&self.layer_shader);
-                    self.system.set_uniform("u_texture",0);
-                    self.system.bind_vertexbuffer(&self.quad_vertexbuffer);
-                    self.system.draw_triangle_fan(4);
-                    self.system.unbind_vertexbuffer();
-                    self.system.unbind_shader();
-                    self.system.unbind_texture2d(0);
+    /// Run the engine.
+    pub fn run(&self) {
+        let mut running = true;
+        while running {
+            self.system.wait();
+            for event in self.system.poll(&self.window) {
+                match event {
+                    Event::Paint(_) => {
+                        let fb_aspect = (self.framebuffer.size.x as f32) / (self.framebuffer.size.y as f32);
+                        let win_aspect = (self.window.size.get().x as f32) / (self.window.size.get().y as f32);
+                        let scale = if win_aspect > fb_aspect {
+                            vec2!(fb_aspect / win_aspect,1.0)
+                        }
+                        else {
+                            vec2!(1.0,win_aspect / fb_aspect)
+                        };
+                        self.graphics.bind_target(&self.framebuffer);
+                        for layer in &*self.layers.borrow() {
+                            self.graphics.bind_texture(0,&*layer.framebuffer);
+                            self.graphics.bind_shader(&self.layer_shader);
+                            self.graphics.set_uniform("u_texture",0);
+                            self.graphics.bind_vertexbuffer(&self.quad_vertexbuffer);
+                            self.graphics.draw_triangle_fan(4);
+                        }
+                        self.graphics.bind_target(&self.window);
+                        self.graphics.bind_texture(0,&*self.framebuffer);
+                        self.graphics.bind_shader(&self.final_shader);
+                        self.graphics.set_uniform("u_scale",scale);
+                        self.graphics.set_uniform("u_texture",0);
+                        self.graphics.bind_vertexbuffer(&self.quad_vertexbuffer);
+                        self.graphics.draw_triangle_fan(4);
+                        self.graphics.flush();
+                    },
+    
+                    Event::Resize(s) => {
+                        self.window.size.set(vec2!(s.x as usize,s.y as usize));
+                    },
+    
+                    Event::Close => {
+                        running = false;
+                    },
+    
+                    _ => { },
                 }
-                self.system.unbind_framebuffer();
-                self.system.bind_framebuffer_as_texture2d(0,&self.framebuffer);
-                self.system.bind_shader(&self.final_shader);
-                self.system.set_uniform("u_texture",0);
-                self.system.bind_vertexbuffer(&self.quad_vertexbuffer);
-                self.system.draw_triangle_fan(4);
-                self.system.unbind_vertexbuffer();
-                self.system.unbind_shader();
-                self.system.unbind_texture2d(0);
-            },
-            Event::Close => {
-                self.running = false;
-            },
-            _ => {
-            },
-        }
+            }
+        }    
     }
 }

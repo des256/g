@@ -6,18 +6,8 @@ use g::*;
 use std::rc::Rc;
 
 fn main() {
-    let system = Rc::new(match System::new() {
-        Ok(system) => system,
-        Err(_) => { panic!("Cannot open system."); },
-    });
-
-    let engine = Rc::new(match Engine::new(&system,vec2!(1024,576),vec2!(256,144)) {
-        Ok(engine) => engine,
-        Err(_) => { panic!("Cannot open engine."); },
-    });
-
-    while engine.running {
-        system.wait();
-        system.pump();
-    }
+    let system = Rc::new(System::new().expect("Cannot open system."));
+    let graphics = Rc::new(gpu::Graphics::new(&system).expect("Cannot open graphics."));
+    let engine = Rc::new(Engine::new(&system,&graphics,vec2!(1024,576),vec2!(256,144)).expect("Cannot open engine."));
+    engine.run();
 }
