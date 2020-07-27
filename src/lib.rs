@@ -3,8 +3,16 @@
 
 use e::*;
 
-mod layer;
-pub use layer::*;
+pub trait Layer {
+    fn framebuffer(&self) -> &gpu::Framebuffer;
+    fn render(&self);
+}
+
+mod staticlayer;
+pub use staticlayer::*;
+
+mod maplayer;
+pub use maplayer::*;
 
 mod engine;
 pub use engine::*;
