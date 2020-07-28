@@ -138,20 +138,20 @@ fn main() {
             match event {
                 Event::KeyPress(k) => {
                     match k {
-                        111 => { up_pressed = true; },
-                        116 => { down_pressed = true; },
-                        113 => { left_pressed = true; },
-                        114 => { right_pressed = true; },
+                        KEY_UP => { up_pressed = true; },
+                        KEY_DOWN => { down_pressed = true; },
+                        KEY_LEFT => { left_pressed = true; },
+                        KEY_RIGHT => { right_pressed = true; },
                         _ => { },
                     }
                 },
 
                 Event::KeyRelease(k) => {
                     match k {
-                        111 => { up_pressed = false; },
-                        116 => { down_pressed = false; },
-                        113 => { left_pressed = false; },
-                        114 => { right_pressed = false; },
+                        KEY_UP => { up_pressed = false; },
+                        KEY_DOWN => { down_pressed = false; },
+                        KEY_LEFT => { left_pressed = false; },
+                        KEY_RIGHT => { right_pressed = false; },
                         _ => { },
                     }
                 },
