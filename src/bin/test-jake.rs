@@ -56,7 +56,7 @@ fn main() {
     layer.set_map(&map);
 
     // load jake texture
-    let mut file = File::open("try/jake/all2.png").expect("cannot open file");
+    let mut file = File::open("try/jake/all4.png").expect("cannot open file");
     let mut buffer: Vec<u8> = Vec::new();
     file.read_to_end(&mut buffer).expect("unable to read file");
     let jake_mat = image::decode::<pixel::ARGB8>(&buffer).expect("unable to decode");
@@ -71,11 +71,14 @@ fn main() {
         uniform uvec2 u_size;
         uniform uvec2 u_pos;
         uniform uvec2 u_jake;
-        out vec2 f_tex;
+        out vec2 f_albedo_tex;
+        out vec2 f_normal_tex;
         void main() {
             vec2 cell_size = vec2(1.0 / float(u_cells.x),1.0 / float(u_cells.y));
-            vec2 cell = vec2(float(u_cell.x) * cell_size.x,float(u_cell.y) * cell_size.y);
-            f_tex = vec2(cell.x + v_pos.x * cell_size.x,cell.y + v_pos.y * cell_size.y);
+            vec2 albedo_cell = vec2(float(u_cell.x) * cell_size.x,float(u_cell.y) * cell_size.y);
+            vec2 normal_cell = vec2(float(u_cell.x) * cell_size.x,float(u_cell.y + 4) * cell_size.y);
+            f_albedo_tex = vec2(albedo_cell.x + v_pos.x * cell_size.x,albedo_cell.y + v_pos.y * cell_size.y);
+            f_normal_tex = vec2(normal_cell.x + v_pos.x * cell_size.x,normal_cell.y + v_pos.y * cell_size.y);
             vec2 psize = vec2(1.0 / float(u_size.x),1.0 / float(u_size.y));
             vec2 pos = vec2(float(u_pos.x) * psize.x,float(u_pos.y) * psize.y);
             vec2 jake = vec2(float(u_jake.x) * psize.x,float(u_jake.y) * psize.y);
@@ -85,10 +88,21 @@ fn main() {
     let jake_fs = r#"
         #version 420 core
         uniform sampler2D u_texture;
-        in vec2 f_tex;
+        uniform vec3 u_ambient;
+        uniform vec3 u_light;
+        in vec2 f_albedo_tex;
+        in vec2 f_normal_tex;
         out vec4 fs_output;
         void main() {
-            fs_output = texture2D(u_texture,f_tex);
+            vec4 albedo = texture2D(u_texture,f_albedo_tex);
+            vec4 normal = vec4(-1.0,-1.0,-1.0,-1.0) + 2.0 * texture2D(u_texture,f_normal_tex);
+            normal.y = -normal.y;
+            float diff = 1.0;
+            if(normal.w > 0.0) {
+                diff = dot(normal.xyz,u_light);
+            }
+            vec3 result = albedo.xyz * (u_ambient + diff);
+            fs_output = vec4(result,albedo.w);
         }
     "#;
     let jake_shader = match gpu::Shader::new(&graphics,jake_vs,None,jake_fs) {
@@ -188,12 +202,15 @@ fn main() {
         graphics.bind_texture(0,&*jake_texture);
         graphics.bind_shader(&jake_shader);
         graphics.set_uniform("u_texture",0);
-        graphics.set_uniform("u_cells",vec2!(FRAMES_PER_CYCLE as u32,4u32));
-        graphics.set_uniform("u_cell",vec2!(step,dir));
+        graphics.set_uniform("u_cells",vec2!(FRAMES_PER_CYCLE as u32,8u32));  // total number of cells in the atlas
+        graphics.set_uniform("u_cell",vec2!(step,dir));  // requested cell
         let size = engine.framebuffer.size;
-        graphics.set_uniform("u_size",vec2!(size.x as u32,size.y as u32));
-        graphics.set_uniform("u_pos",pos);
-        graphics.set_uniform("u_jake",vec2!(16,24));
+        graphics.set_uniform("u_size",vec2!(size.x as u32,size.y as u32));  // size (in pixels) of the framebuffer
+        graphics.set_uniform("u_pos",pos);  // position (in pixels) of the sprite
+        graphics.set_uniform("u_jake",vec2!(16,24));  // size (in pixels) of one cell
+        graphics.set_uniform("u_ambient",vec3!(0.4f32,0.4f32,0.4f32));  // ambient lighting color
+        let light = vec3!(-2.0f32,-5.0f32,1.0f32).norm();  // direction of the light
+        graphics.set_uniform("u_light",light);
         graphics.bind_vertexbuffer(&engine.quad_vertexbuffer);
         graphics.set_blend(gpu::BlendMode::Over);
         graphics.draw_triangle_fan(4);
@@ -206,7 +223,7 @@ fn main() {
 
         let present_us = time.elapsed().as_micros();
 
-        println!("update: {:5}  draw: {:5}  ({:5} remaining)  +/- {:2} Hz",
+        println!("update: {:5}  draw: {:5}  ({:5} remaining)  {:2} Hz",
             update_us - frame_us,
             render_us - update_us,
             present_us - render_us,
