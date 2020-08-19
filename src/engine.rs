@@ -169,7 +169,7 @@ impl Engine {
             Err(_) => { return Err(EngineError::Generic); },
         };
 
-        let quad_vertexbuffer = match gpu::VertexBuffer::new(&graphics,QUAD.to_vec()) {
+        let quad_vertexbuffer = match gpu::VertexBuffer::new_from_vec(&graphics,&QUAD.to_vec()) {
             Ok(vertexbuffer) => vertexbuffer,
             Err(_) => { return Err(EngineError::Generic); },
         };
@@ -235,6 +235,6 @@ impl Engine {
     }
 
     pub fn present(&self) {
-        self.graphics.present();
+        gpu::present(&self.system,&self.window);
     }
 }

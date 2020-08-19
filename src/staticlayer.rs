@@ -17,7 +17,7 @@ impl StaticLayer {
         });
         let texture = gpu::Texture2D::new_from_mat(&engine.graphics,&image).expect("unable to load texture");
         engine.graphics.bind_target(&framebuffer);
-        engine.graphics.clear(pixel::ARGB8::from(0xFFFFFF00));
+        engine.graphics.clear(0xFFFFFF00);
         engine.graphics.bind_texture(0,&texture);
         engine.graphics.bind_shader(&engine.static_shader);
         engine.graphics.set_uniform("u_texture",0);
