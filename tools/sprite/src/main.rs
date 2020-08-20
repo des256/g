@@ -2,10 +2,16 @@
 // Desmond Germans, 2020
 
 use e::*;
-use g::*;
 use std::rc::Rc;
 
-pub mod application;
+mod application;
+mod document;
+mod editcanvas;
+mod grid;
+mod layer;
+mod pixelgrid;
+mod selection;
+
 use application::*;
 
 fn main() {

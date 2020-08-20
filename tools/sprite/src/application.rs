@@ -2,31 +2,42 @@
 // by Desmond Germans, 2020
 
 use e::*;
-use g::*;
 use std::rc::Rc;
+
+use crate::document::*;
+use crate::editcanvas::*;
 
 pub struct Application {
     ui: Rc<ui::UI>,
+    document: Rc<Document>,
+    edit_canvas: EditCanvas,
 }
 
 impl Application {
     pub fn new(ui: &Rc<ui::UI>) -> Result<Application,SystemError> {
+        let document = Rc::new(Document::new(&ui.graphics));
+        let edit_canvas = EditCanvas::new(ui,&document)?;
         Ok(Application {
             ui: Rc::clone(ui),
+            document: document,
+            edit_canvas: edit_canvas,
         })
     }
 }
 
 impl ui::Widget for Application {
     fn measure(&self) -> Vec2<i32> {
-        vec2!(0,0)
+        self.edit_canvas.measure()
     }
 
-    fn handle(&self,event: &Event,_space: Rect<i32>) -> ui::HandleResult {
-        ui::HandleResult::Unhandled
+    fn handle(&self,event: &Event,_space: Rect<i32>) {
+        // TODO: mouse hit test
+        // TODO: if mouse inside edit_canvas, let edit_canvas handle it
     }
 
-    fn build(&self,buffer: &mut Vec<ui::UIRect>,space: Rect<i32>) {
+    fn draw(&self,canvas_size: Vec2<i32>,space: Rect<i32>) {
+        // for now, the entire app is the edit_canvas
+        self.edit_canvas.draw(canvas_size,space);
     }
 }
 
