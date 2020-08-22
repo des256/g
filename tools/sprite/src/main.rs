@@ -4,13 +4,9 @@
 use e::*;
 use std::rc::Rc;
 
-mod application;
 mod document;
 mod editcanvas;
-mod grid;
-mod layer;
-mod pixelgrid;
-mod selection;
+mod application;
 
 use application::*;
 

@@ -2,24 +2,42 @@
 // by Desmond Germans, 2020
 
 use e::*;
-use std::rc::Rc;
+use std::{
+    rc::Rc,
+    fs::File,
+    io::prelude::*,
+};
 
 use crate::document::*;
 use crate::editcanvas::*;
 
 pub struct Application {
-    ui: Rc<ui::UI>,
-    document: Rc<Document>,
+    _ui: Rc<ui::UI>,
+    _document: Rc<Document>,
     edit_canvas: EditCanvas,
 }
 
 impl Application {
     pub fn new(ui: &Rc<ui::UI>) -> Result<Application,SystemError> {
-        let document = Rc::new(Document::new(&ui.graphics));
+
+        // load test data
+        let mut file = File::open("test.png").expect("Unable to open test.png.");
+        let mut buffer: Vec<u8> = Vec::new();
+        file.read_to_end(&mut buffer).expect("Unable to read file.");
+        let mat = image::decode::<pixel::ARGB8>(&buffer).expect("Unable to decode file.");
+
+        // create document
+        let document = Rc::new(Document::new(&ui.graphics,mat.size));
+
+        // copy test data into layer
+        document.layers[0].texture.load(vec2!(0,0),&mat);
+
+        // create edit canvas for document
         let edit_canvas = EditCanvas::new(ui,&document)?;
+
         Ok(Application {
-            ui: Rc::clone(ui),
-            document: document,
+            _ui: Rc::clone(ui),
+            _document: document,
             edit_canvas: edit_canvas,
         })
     }
@@ -30,9 +48,9 @@ impl ui::Widget for Application {
         self.edit_canvas.measure()
     }
 
-    fn handle(&self,event: &Event,_space: Rect<i32>) {
-        // TODO: mouse hit test
-        // TODO: if mouse inside edit_canvas, let edit_canvas handle it
+    fn handle(&self,event: &Event,space: Rect<i32>) {
+        // for now, pass everything to the edit_canvas
+        self.edit_canvas.handle(event,space);
     }
 
     fn draw(&self,canvas_size: Vec2<i32>,space: Rect<i32>) {
@@ -52,17 +70,20 @@ to fit this in UI as separate draw call, first use an overlay; draw the image af
 
 Features:
 
+* zoom/unzoom
+* pixel grid visible/invisible
+* tiling horizontal/vertical
++ grid visible/invisible
++ multiple layers in the image
++ layers blending modes
 - complicated pixel format
 - save/load image
 - MDI
 - recently opened files list
 - save/load sprite sheet setup
 - undo/redo queue
-- zoom/unzoom
-- multiple layers in the image
 - layers can be visible/invisible
 - layers can be locked
-- layers blending modes
 - draw/erase with brush
 - color palette to choose brush color
 - sample color
@@ -111,10 +132,7 @@ Features:
 - properties of the frames
 - new frame(s)
 - delete frames
-- grid visible/invisible
 - grid settings
-- pixel grid visible/invisible
-- tiling horizontal/vertical
 - play/stop/reverse animation
 - various help screens
 - 3D normal editor
