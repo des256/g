@@ -25,7 +25,7 @@ fn main() {
     let image = image::decode::<pixel::ARGB8>(&buffer).expect("unable to decode");
 
     // create static layer for game engine
-    let layer = Rc::new(StaticLayer::new(&engine,&image).expect("cannot create layer"));
+    let layer = Rc::new(StaticLayer::new_from_mat(&engine,image).expect("cannot create layer"));
 
     // create layer collection
     let layers: Vec<Rc<dyn Layer>> = vec![layer];

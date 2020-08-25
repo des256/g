@@ -13,8 +13,8 @@ use crate::editcanvas::*;
 
 pub struct Application {
     _ui: Rc<ui::UI>,
-    _document: Rc<Document>,
-    edit_canvas: EditCanvas,
+    book: Rc<ui::Book>,
+    // needs collection of open documents with associated edit_canvases in the book
 }
 
 impl Application {
@@ -33,29 +33,34 @@ impl Application {
         document.layers[0].texture.load(vec2!(0,0),&mat);
 
         // create edit canvas for document
-        let edit_canvas = EditCanvas::new(ui,&document)?;
+        let edit_canvas: Rc<dyn ui::Widget> = Rc::new(EditCanvas::new(ui,&document)?);
+
+        // create other mock control
+        let button: Rc<dyn ui::Widget> = Rc::new(ui::Button::new(ui,"What?",&ui.font)?);
+
+        // create book
+        let book = Rc::new(ui::Book::new_from_vec(ui,vec![("My_Sprite".to_string(),&edit_canvas),("The_Button".to_string(),&button)])?);
 
         Ok(Application {
             _ui: Rc::clone(ui),
-            _document: document,
-            edit_canvas: edit_canvas,
+            book: book,
         })
     }
 }
 
 impl ui::Widget for Application {
     fn measure(&self) -> Vec2<i32> {
-        self.edit_canvas.measure()
+        self.book.measure()
     }
 
     fn handle(&self,event: &Event,space: Rect<i32>) {
-        // for now, pass everything to the edit_canvas
-        self.edit_canvas.handle(event,space);
+        // for now, pass everything to the book
+        self.book.handle(event,space);
     }
 
     fn draw(&self,canvas_size: Vec2<i32>,space: Rect<i32>) {
-        // for now, the entire app is the edit_canvas
-        self.edit_canvas.draw(canvas_size,space);
+        // for now, the entire app is the book
+        self.book.draw(canvas_size,space);
     }
 }
 

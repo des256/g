@@ -10,12 +10,12 @@ pub struct StaticLayer {
 }
 
 impl StaticLayer {
-    pub fn new(engine: &Rc<Engine>,image: &Mat<pixel::ARGB8>) -> Result<StaticLayer,EngineError> {
+    pub fn new_from_mat(engine: &Rc<Engine>,image: Mat<pixel::ARGB8>) -> Result<StaticLayer,EngineError> {
         let framebuffer = Rc::new(match gpu::Framebuffer::new(&engine.graphics,engine.framebuffer.size) {
             Ok(framebuffer) => framebuffer,
             Err(_) => { return Err(EngineError::Generic); },
         });
-        let texture = gpu::Texture2D::new_from_mat(&engine.graphics,&image).expect("unable to load texture");
+        let texture = gpu::Texture2D::new_from_mat(&engine.graphics,image).expect("unable to load texture");
         engine.graphics.bind_target(&framebuffer);
         engine.graphics.clear(0xFFFFFF00);
         engine.graphics.bind_texture(0,&texture);

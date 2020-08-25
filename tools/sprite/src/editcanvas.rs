@@ -177,7 +177,7 @@ impl EditCanvas {
         "#;
         let pixel_grid_shader = gpu::Shader::new(&ui.graphics,vs,Some(gs),pixel_grid_fs).expect("Unable to create pixel grid shader.");
 
-        let quad_point = gpu::VertexBuffer::<Vec4<f32>>::new_from_vec(&ui.graphics,&vec![vec4!(0.0,0.0,1.0,1.0)]).expect("Unable to create vertexbuffer.");
+        let quad_point = gpu::VertexBuffer::<Vec4<f32>>::new_from_vec(&ui.graphics,vec![vec4!(0.0,0.0,1.0,1.0)]).expect("Unable to create vertexbuffer.");
 
         Ok(EditCanvas {
             ui: Rc::clone(ui),

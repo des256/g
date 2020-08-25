@@ -35,11 +35,11 @@ impl MapLayer {
         })
     }
 
-    pub fn set_atlas(&self,image: &Mat<pixel::ARGB8>) {
+    pub fn set_atlas_from_mat(&self,image: Mat<pixel::ARGB8>) {
         *self.atlas_texture.borrow_mut() = Rc::new(gpu::Texture2D::<pixel::ARGB8>::new_from_mat(&self.engine.graphics,image).expect("Unable to upload atlas texture."));
     }
 
-    pub fn set_map(&self,image: &Mat<u32>) {
+    pub fn set_map_from_mat(&self,image: Mat<u32>) {
         *self.map_texture.borrow_mut() = Rc::new(gpu::Texture2D::<u32>::new_from_mat(&self.engine.graphics,image).expect("Unable to upload map texture."));
     }
 }

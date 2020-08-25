@@ -28,7 +28,7 @@ fn main() {
     let mut buffer: Vec<u8> = Vec::new();
     file.read_to_end(&mut buffer).expect("unable to read file");
     let atlas_mat = image::decode::<pixel::ARGB8>(&buffer).expect("unable to decode");
-    layer.set_atlas(&atlas_mat);
+    layer.set_atlas_from_mat(atlas_mat);
 
     // create map texture
     let mut map = Mat::<u32>::new(vec2!(4,4));
@@ -48,7 +48,7 @@ fn main() {
     map.set(vec2!(1,3),2);
     map.set(vec2!(2,3),2);
     map.set(vec2!(3,3),2);
-    layer.set_map(&map);
+    layer.set_map_from_mat(map);
 
     // create layer collection
     let layers: Vec<Rc<dyn Layer>> = vec![layer];

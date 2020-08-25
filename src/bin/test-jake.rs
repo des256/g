@@ -33,7 +33,7 @@ fn main() {
     let mut buffer: Vec<u8> = Vec::new();
     file.read_to_end(&mut buffer).expect("unable to read file");
     let atlas_mat = image::decode::<pixel::ARGB8>(&buffer).expect("unable to decode");
-    layer.set_atlas(&atlas_mat);
+    layer.set_atlas_from_mat(atlas_mat);
 
     // create map texture
     let mut map = Mat::<u32>::new(vec2!(4,4));
@@ -53,14 +53,14 @@ fn main() {
     map.set(vec2!(1,3),2);
     map.set(vec2!(2,3),2);
     map.set(vec2!(3,3),2);
-    layer.set_map(&map);
+    layer.set_map_from_mat(map);
 
     // load jake texture
     let mut file = File::open("try/jake/all4.png").expect("cannot open file");
     let mut buffer: Vec<u8> = Vec::new();
     file.read_to_end(&mut buffer).expect("unable to read file");
     let jake_mat = image::decode::<pixel::ARGB8>(&buffer).expect("unable to decode");
-    let jake_texture = Rc::new(gpu::Texture2D::<pixel::ARGB8>::new_from_mat(&graphics,&jake_mat).expect("Unable to upload Jake texture."));
+    let jake_texture = Rc::new(gpu::Texture2D::<pixel::ARGB8>::new_from_mat(&graphics,jake_mat).expect("Unable to upload Jake texture."));
 
     // create Jake shader
     let jake_vs = r#"
