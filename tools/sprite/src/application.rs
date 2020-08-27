@@ -39,7 +39,10 @@ impl Application {
         let button: Rc<dyn ui::Widget> = Rc::new(ui::Button::new(ui,"What?",&ui.font)?);
 
         // create book
-        let book = Rc::new(ui::Book::new_from_vec(ui,vec![("My_Sprite".to_string(),&edit_canvas),("The_Button".to_string(),&button)])?);
+        let book = Rc::new(ui::Book::new_from_vec(ui,vec![
+            ("My_Sprite".to_string(),edit_canvas),
+            ("The_Button".to_string(),button)
+        ])?);
 
         Ok(Application {
             _ui: Rc::clone(ui),
