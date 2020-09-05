@@ -11,8 +11,9 @@ use std::rc::Rc;
 pub struct Engine {
     pub(crate) system: Rc<System>,
     pub(crate) graphics: Rc<gpu::Graphics>,
-    pub window: Rc<Window>,
+    pub(crate) core: e::WindowCore,
     pub framebuffer: Rc<gpu::Framebuffer>,
+    pub(crate) layers: Vec<Rc<dyn Layer>>,
     pub(crate) layer_shader: gpu::Shader,
     pub(crate) final_shader: gpu::Shader,
     pub(crate) static_shader: gpu::Shader,
@@ -46,11 +47,6 @@ impl Engine {
     /// * `winsize` - Initial screen window size.
     /// * `fbsize` - Compositing framebuffer size.
     pub fn new(system: &Rc<System>,graphics: &Rc<gpu::Graphics>,winsize: Vec2<usize>,fbsize: Vec2<usize>) -> Result<Engine,EngineError> {
-
-        let window = Rc::new(match Window::new(&system,rect!(50,50,winsize.x as isize,winsize.y as isize),"Engine Window") {
-            Ok(window) => window,
-            Err(_) => { return Err(EngineError::Generic); },
-        });
 
         let framebuffer = Rc::new(match gpu::Framebuffer::new(&graphics,fbsize) {
             Ok(framebuffer) => framebuffer,
@@ -177,8 +173,13 @@ impl Engine {
         Ok(Engine {
             system: Rc::clone(system),
             graphics: Rc::clone(graphics),
-            window: window,
+            core: WindowCore::new_frame(
+                system,
+                rect!(50,50,winsize.x as i32,winsize.y as i32),
+                "Engine Window"
+            ),
             framebuffer: framebuffer,
+            layers: Vec::new(),
             layer_shader: layer_shader,
             final_shader: final_shader,
             static_shader: static_shader,
@@ -193,39 +194,29 @@ impl Engine {
     }
 
     pub fn update(&self) {
-        for event in self.system.poll(&self.window) {
-            match event {
-                Event::Resize(s) => {
-                    self.window.size.set(vec2!(s.x as usize,s.y as usize));
-                },
-
-                Event::Close => {
-                    self.running.set(false);
-                },
-
-                _ => { },
-            }
-        }
+        let mut windows: Vec<&Engine> = Vec::new();
+        windows.push(self);
+        self.system.flush(&windows);
     }
 
-    pub fn render(&self,layers: &Vec<Rc<dyn Layer>>) {
+    pub fn render(&self) {
         let fb_aspect = (self.framebuffer.size.x as f32) / (self.framebuffer.size.y as f32);
-        let win_aspect = (self.window.size.get().x as f32) / (self.window.size.get().y as f32);
+        let win_aspect = (self.core.r.get().s.x as f32) / (self.core.r.get().s.y as f32);
         let scale = if win_aspect > fb_aspect {
             vec2!(fb_aspect / win_aspect,1.0)
         }
         else {
             vec2!(1.0,win_aspect / fb_aspect)
         };
-        self.graphics.bind_target(&self.framebuffer);
-        for layer in layers.iter() {
+        self.graphics.bind_target(&*self.framebuffer);
+        for layer in self.layers.iter() {
             self.graphics.bind_texture(0,layer.framebuffer());
             self.graphics.bind_shader(&self.layer_shader);
             self.graphics.set_uniform("u_texture",0);
             self.graphics.bind_vertexbuffer(&self.quad_vertexbuffer);
             self.graphics.draw_triangle_fan(4);
         }
-        self.graphics.bind_target(&self.window);
+        self.graphics.bind_target(self);
         self.graphics.bind_texture(0,&*self.framebuffer);
         self.graphics.bind_shader(&self.final_shader);
         self.graphics.set_uniform("u_scale",scale);
@@ -235,6 +226,29 @@ impl Engine {
     }
 
     pub fn present(&self) {
-        gpu::present(&self.system,&self.window);
+        self.graphics.present(self.core.id);
+    }
+}
+
+impl Window for Engine {
+    fn handle(&self,event: Event) {
+        match event {
+            Event::Close => {
+                self.running.set(false);
+            },
+            _ => { },
+        }
+    }
+
+    fn rect(&self) -> Rect<i32> {
+        self.core.r.get()
+    }
+
+    fn set_rect(&self,r: Rect<i32>) {
+        self.core.r.set(r);
+    }
+
+    fn id(&self) -> u64 {
+        self.core.id
     }
 }

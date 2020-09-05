@@ -50,7 +50,7 @@ impl Layer for MapLayer {
     }
 
     fn render(&self) {
-        self.engine.graphics.bind_target(&self.framebuffer);
+        self.engine.graphics.bind_target(&*self.framebuffer);
         self.engine.graphics.bind_shader(&self.engine.map_shader);
         self.engine.graphics.bind_texture(0,&**(self.atlas_texture.borrow()));
         self.engine.graphics.set_uniform("atlas_texture",0);

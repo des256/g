@@ -16,7 +16,7 @@ impl StaticLayer {
             Err(_) => { return Err(EngineError::Generic); },
         });
         let texture = gpu::Texture2D::new_from_mat(&engine.graphics,image).expect("unable to load texture");
-        engine.graphics.bind_target(&framebuffer);
+        engine.graphics.bind_target(&*framebuffer);
         engine.graphics.clear(0xFFFFFF00);
         engine.graphics.bind_texture(0,&texture);
         engine.graphics.bind_shader(&engine.static_shader);

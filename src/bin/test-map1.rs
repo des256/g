@@ -1,17 +1,17 @@
 // G - Map test
 // Desmond Germans, 2020
 
-use e::*;
+/*use e::*;
 use g::*;
 use std::{
     rc::Rc,
     fs::File,
     io::prelude::*,
     time::Instant,
-};
+};*/
 
 fn main() {
-    // open system
+    /*// open system
     let system = Rc::new(System::new().expect("Cannot open system."));
 
     // create GPU graphics context
@@ -64,5 +64,5 @@ fn main() {
         engine.present();
         let present_us = time.elapsed().as_micros();
         println!("{:016}: UPD {:006}  REN {:006}  PRS {:006}",present_us,update_us - start_us,render_us - update_us,present_us - render_us);
-    }
+    }*/
 }

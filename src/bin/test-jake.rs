@@ -1,7 +1,7 @@
 // G - Jake test
 // Desmond Germans, 2020
 
-use e::*;
+/*use e::*;
 use g::*;
 use std::{
     rc::Rc,
@@ -13,10 +13,10 @@ use std::{
 const MS_PER_US: f32 = 0.001;
 const WALK_SPEED: f32 = 0.001;
 const PIXELS_PER_CYCLE: f32 = 16.0;
-const FRAMES_PER_CYCLE: f32 = 8.0;
+const FRAMES_PER_CYCLE: f32 = 8.0;*/
 
 fn main() {
-    // open system
+    /*// open system
     let system = Rc::new(System::new().expect("Cannot open system."));
 
     // create GPU graphics context
@@ -231,5 +231,5 @@ fn main() {
         );
         
         prev_frame_us = frame_us;
-    }
+    }*/
 }
