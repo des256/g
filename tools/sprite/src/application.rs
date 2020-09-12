@@ -4,66 +4,62 @@
 use e::*;
 use std::{
     rc::Rc,
-    fs::File,
-    io::prelude::*,
 };
 
 use crate::document::*;
 use crate::editcanvas::*;
 
 pub struct Application {
-    _state: Rc<ui::UIState>,
-    book: Rc<ui::Book>,
+    _uistate: Rc<ui::UIState>,
+    edit_canvas: EditCanvas,
     // needs collection of open documents with associated edit_canvases in the book
 }
 
 impl Application {
     pub fn new(state: &Rc<ui::UIState>) -> Result<Application,SystemError> {
-
-        // load test data
-        let mut file = File::open("test.png").expect("Unable to open test.png.");
-        let mut buffer: Vec<u8> = Vec::new();
-        file.read_to_end(&mut buffer).expect("Unable to read file.");
-        let mat = image::decode::<pixel::ARGB8>(&buffer).expect("Unable to decode file.");
-
-        // create document
+        let mat = image::load::<pixel::ARGB8>("test.png").expect("Unable to open test.png");
         let document = Rc::new(Document::new(&state.graphics,mat.size));
-
-        // copy test data into layer
         document.layers[0].texture.load(vec2!(0,0),&mat);
-
-        // create edit canvas for document
-        let edit_canvas: Rc<dyn ui::Widget> = Rc::new(EditCanvas::new(ui,&document)?);
-
-        // create other mock control
-        let button: Rc<dyn ui::Widget> = Rc::new(ui::Button::new(state,"What?",&ui.font));
-
-        // create book
-        let book = Rc::new(ui::Book::new_from_vec(state,vec![
-            ("My_Sprite".to_string(),edit_canvas),
-            ("The_Button".to_string(),button)
-        ]));
+        let edit_canvas = EditCanvas::new(state,&document)?;
 
         Ok(Application {
-            _state: Rc::clone(state),
-            book: book,
+            _uistate: Rc::clone(state),
+            edit_canvas: edit_canvas,
         })
     }
 }
 
 impl ui::Widget for Application {
-    fn measure(&self) -> Vec2<i32> {
-        self.book.measure()
+    fn get_rect(&self) -> Rect<i32> {
+        self.edit_canvas.get_rect()
     }
 
-    fn handle(&self,event: &Event,space: Rect<i32>) {
-        // for now, pass everything to the book
-        self.book.handle(event,space);
+    fn set_rect(&self,r: Rect<i32>) {
+        self.edit_canvas.set_rect(r)
     }
 
-    fn draw(&self,canvas_size: Vec2<i32>,space: Rect<i32>) {
-        // for now, the entire app is the book
-        self.book.draw(canvas_size,space);
+    fn calc_min_size(&self) -> Vec2<i32> {
+        self.edit_canvas.calc_min_size()
+    }
+
+    fn draw(&self,context: Vec2<i32>) {
+        self.edit_canvas.draw(context);
+    }
+
+    fn handle_mouse_press(&self,p: Vec2<i32>,b: MouseButton) {
+        self.edit_canvas.handle_mouse_press(p,b);
+    }
+
+    fn handle_mouse_release(&self,p: Vec2<i32>,b: MouseButton) {
+        self.edit_canvas.handle_mouse_release(p,b);
+    }
+
+    fn handle_mouse_move(&self,p: Vec2<i32>) -> bool {
+        self.edit_canvas.handle_mouse_move(p)
+    }
+
+    fn handle_mouse_wheel(&self,w: MouseWheel) {
+        self.edit_canvas.handle_mouse_wheel(w)
     }
 }
 

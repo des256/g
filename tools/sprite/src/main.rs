@@ -11,23 +11,11 @@ mod application;
 use application::*;
 
 fn main() {
-    // open system
     let system = Rc::new(System::new().expect("Cannot open system."));
-
-    // create GPU graphics context
-    let graphics = Rc::new(gpu::Graphics::new(&system).expect("Cannot open graphics."));
-    
-    // create UI context
+    let graphics = Rc::new(gpu::Graphics::new(&system).expect("Cannot open GPU."));
     let mut ui = ui::UI::new(&system,&graphics,"../../../e/static/fonts").expect("Cannot open UI.");
-
-    // create main widget
-    let app = Rc::new(Application::new(&ui).expect("Cannot create main application."));
-
-    // open host window
-    ui.open_frame(rect!(50,50,1280,640),"Sprite Editor",app);
-
-    // run UI loop
+    let app = Rc::new(Application::new(&ui.state).expect("Cannot create main application."));
+    ui.open_frame(rect!(50,50,1280,640),"Sprite Editor",&app);
     ui.run();
-
-    ui.close(app);
+    ui.close(&app);
 }
