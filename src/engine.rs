@@ -13,7 +13,6 @@ pub struct Engine {
     pub(crate) graphics: Rc<gpu::Graphics>,
     pub(crate) core: e::WindowCore,
     pub framebuffer: Rc<gpu::Framebuffer>,
-    pub(crate) layers: Vec<Rc<dyn Layer>>,
     pub(crate) layer_shader: gpu::Shader,
     pub(crate) final_shader: gpu::Shader,
     pub(crate) static_shader: gpu::Shader,
@@ -179,7 +178,6 @@ impl Engine {
                 "Engine Window"
             ),
             framebuffer: framebuffer,
-            layers: Vec::new(),
             layer_shader: layer_shader,
             final_shader: final_shader,
             static_shader: static_shader,
@@ -193,13 +191,13 @@ impl Engine {
         self.running.get()
     }
 
-    pub fn update(&self) {
+    pub fn update(&self,_layers: &Vec<Rc<dyn Layer>>) {
         let mut windows: Vec<&Engine> = Vec::new();
         windows.push(self);
         self.system.flush(&windows);
     }
 
-    pub fn render(&self) {
+    pub fn render(&self,layers: &Vec<Rc<dyn Layer>>) {
         let fb_aspect = (self.framebuffer.size.x as f32) / (self.framebuffer.size.y as f32);
         let win_aspect = (self.core.r.get().s.x as f32) / (self.core.r.get().s.y as f32);
         let scale = if win_aspect > fb_aspect {
@@ -209,7 +207,7 @@ impl Engine {
             vec2!(1.0,win_aspect / fb_aspect)
         };
         self.graphics.bind_target(&*self.framebuffer);
-        for layer in self.layers.iter() {
+        for layer in layers.iter() {
             self.graphics.bind_texture(0,layer.framebuffer());
             self.graphics.bind_shader(&self.layer_shader);
             self.graphics.set_uniform("u_texture",0);

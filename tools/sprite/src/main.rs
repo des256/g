@@ -18,14 +18,16 @@ fn main() {
     let graphics = Rc::new(gpu::Graphics::new(&system).expect("Cannot open graphics."));
     
     // create UI context
-    let ui = Rc::new(ui::UI::new(&system,&graphics,"../../../e/static/fonts").expect("Cannot open UI."));
+    let mut ui = ui::UI::new(&system,&graphics,"../../../e/static/fonts").expect("Cannot open UI.");
 
     // create main widget
-    let widget = Rc::new(Application::new(&ui).expect("Cannot create main application."));
+    let app = Rc::new(Application::new(&ui).expect("Cannot create main application."));
 
     // open host window
-    ui.open(&(widget as Rc<dyn ui::Widget>),rect!(50,50,1280,640),"Sprite Editor");
+    ui.open_frame(rect!(50,50,1280,640),"Sprite Editor",app);
 
     // run UI loop
     ui.run();
+
+    ui.close(app);
 }

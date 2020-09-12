@@ -1,17 +1,17 @@
 // G - Map test
 // Desmond Germans, 2020
 
-/*use e::*;
+use e::*;
 use g::*;
 use std::{
     rc::Rc,
-    fs::File,
-    io::prelude::*,
     time::Instant,
-};*/
+};
+
+const MS_PER_US: f32 = 0.001;
 
 fn main() {
-    /*// open system
+    // open system
     let system = Rc::new(System::new().expect("Cannot open system."));
 
     // create GPU graphics context
@@ -19,15 +19,12 @@ fn main() {
 
     // create game engine
     let engine = Rc::new(Engine::new(&system,&graphics,vec2!(1024,576),vec2!(256,144)).expect("Cannot open engine."));
-
+    
     // create map layer for game engine
     let layer = Rc::new(MapLayer::new(&engine).expect("cannot create layer"));
 
     // load atlas texture
-    let mut file = File::open("try/8x8tiles.png").expect("cannot open file");
-    let mut buffer: Vec<u8> = Vec::new();
-    file.read_to_end(&mut buffer).expect("unable to read file");
-    let atlas_mat = image::decode::<pixel::ARGB8>(&buffer).expect("unable to decode");
+    let atlas_mat = image::load::<pixel::ARGB8>("try/8x8tiles.png").expect("unable to load tiles");
     layer.set_atlas_from_mat(atlas_mat);
 
     // create map texture
@@ -55,14 +52,32 @@ fn main() {
     
     // main loop
     let time = Instant::now();
+    let mut prev_frame_us = 1;
+    
     while engine.is_running() {
-        let start_us = time.elapsed().as_micros();
-        engine.update();
+        let frame_us = time.elapsed().as_micros();
+        let delta = (frame_us - prev_frame_us) as u32;  // calculate duration of previous frame (in us)
+        let df_ms = MS_PER_US * (delta as f32);  // calculate duration of previous frame (in fractional ms)
+
+        engine.update(&layers);
+
         let update_us = time.elapsed().as_micros();
+
         engine.render(&layers);
+
         let render_us = time.elapsed().as_micros();
+
         engine.present();
+
         let present_us = time.elapsed().as_micros();
-        println!("{:016}: UPD {:006}  REN {:006}  PRS {:006}",present_us,update_us - start_us,render_us - update_us,present_us - render_us);
-    }*/
+
+        println!("update: {:5}  draw: {:5}  ({:5} remaining)  {:2} Hz",
+            update_us - frame_us,
+            render_us - update_us,
+            present_us - render_us,
+            (1000.0 / df_ms) as u32,
+        );
+        
+        prev_frame_us = frame_us;
+    }
 }

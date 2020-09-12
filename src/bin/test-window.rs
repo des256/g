@@ -21,7 +21,7 @@ fn main() {
     let engine = Rc::new(Engine::new(&system,&graphics,vec2!(1024,576),vec2!(256,144)).expect("Cannot open engine."));
 
     // create layer collection
-    //let layers: Vec<Rc<dyn Layer>> = Vec::new();
+    let layers: Vec<Rc<dyn Layer>> = Vec::new();
 
     // main loop
     let time = Instant::now();
@@ -32,11 +32,11 @@ fn main() {
         let delta = (frame_us - prev_frame_us) as u32;  // calculate duration of previous frame (in us)
         let df_ms = MS_PER_US * (delta as f32);  // calculate duration of previous frame (in fractional ms)
 
-        engine.update();
+        engine.update(&layers);
 
         let update_us = time.elapsed().as_micros();
 
-        engine.render();
+        engine.render(&layers);
 
         let render_us = time.elapsed().as_micros();
 

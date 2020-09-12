@@ -12,13 +12,13 @@ use crate::document::*;
 use crate::editcanvas::*;
 
 pub struct Application {
-    _ui: Rc<ui::UI>,
+    _state: Rc<ui::UIState>,
     book: Rc<ui::Book>,
     // needs collection of open documents with associated edit_canvases in the book
 }
 
 impl Application {
-    pub fn new(ui: &Rc<ui::UI>) -> Result<Application,SystemError> {
+    pub fn new(state: &Rc<ui::UIState>) -> Result<Application,SystemError> {
 
         // load test data
         let mut file = File::open("test.png").expect("Unable to open test.png.");
@@ -27,7 +27,7 @@ impl Application {
         let mat = image::decode::<pixel::ARGB8>(&buffer).expect("Unable to decode file.");
 
         // create document
-        let document = Rc::new(Document::new(&ui.graphics,mat.size));
+        let document = Rc::new(Document::new(&state.graphics,mat.size));
 
         // copy test data into layer
         document.layers[0].texture.load(vec2!(0,0),&mat);
@@ -36,16 +36,16 @@ impl Application {
         let edit_canvas: Rc<dyn ui::Widget> = Rc::new(EditCanvas::new(ui,&document)?);
 
         // create other mock control
-        let button: Rc<dyn ui::Widget> = Rc::new(ui::Button::new(ui,"What?",&ui.font)?);
+        let button: Rc<dyn ui::Widget> = Rc::new(ui::Button::new(state,"What?",&ui.font));
 
         // create book
-        let book = Rc::new(ui::Book::new_from_vec(ui,vec![
+        let book = Rc::new(ui::Book::new_from_vec(state,vec![
             ("My_Sprite".to_string(),edit_canvas),
             ("The_Button".to_string(),button)
-        ])?);
+        ]));
 
         Ok(Application {
-            _ui: Rc::clone(ui),
+            _state: Rc::clone(state),
             book: book,
         })
     }
