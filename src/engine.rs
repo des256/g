@@ -11,7 +11,7 @@ use std::rc::Rc;
 pub struct Engine {
     pub(crate) system: Rc<System>,
     pub(crate) graphics: Rc<gpu::Graphics>,
-    pub(crate) core: e::WindowCore,
+    pub(crate) core: e::BaseWindow,
     pub framebuffer: Rc<gpu::Framebuffer>,
     pub(crate) layer_shader: gpu::Shader,
     pub(crate) final_shader: gpu::Shader,
@@ -20,13 +20,6 @@ pub struct Engine {
     pub quad_vertexbuffer: gpu::VertexBuffer<Vec2<f32>>,
     pub running: Cell<bool>,
 }
-
-static QUAD: [Vec2<f32>; 4] = [
-    Vec2::<f32> { x: 0.0,y: 0.0, },
-    Vec2::<f32> { x: 1.0,y: 0.0, },
-    Vec2::<f32> { x: 1.0,y: 1.0, },
-    Vec2::<f32> { x: 0.0,y: 1.0, },
-];
 
 pub enum EngineError {
     Generic
@@ -164,7 +157,14 @@ impl Engine {
             Err(_) => { return Err(EngineError::Generic); },
         };
 
-        let quad_vertexbuffer = match gpu::VertexBuffer::new_from_vec(&graphics,QUAD.to_vec()) {
+        let quad: [Vec2<f32>; 4] = [
+            vec2!(f32: 0.0,0.0),
+            vec2!(f32: 1.0,0.0),
+            vec2!(f32: 1.0,1.0),
+            vec2!(f32: 0.0,1.0),
+        ];
+
+        let quad_vertexbuffer = match gpu::VertexBuffer::new_from_vec(&graphics,quad.to_vec()) {
             Ok(vertexbuffer) => vertexbuffer,
             Err(_) => { return Err(EngineError::Generic); },
         };
@@ -172,9 +172,9 @@ impl Engine {
         Ok(Engine {
             system: Rc::clone(system),
             graphics: Rc::clone(graphics),
-            core: WindowCore::new_frame(
+            core: BaseWindow::new_frame(
                 system,
-                rect!(50,50,winsize.x as i32,winsize.y as i32),
+                rect!(i32: 50,50,winsize.x() as i32,winsize.y() as i32),
                 "Engine Window"
             ),
             framebuffer: framebuffer,
@@ -198,13 +198,13 @@ impl Engine {
     }
 
     pub fn render(&self,layers: &Vec<Rc<dyn Layer>>) {
-        let fb_aspect = (self.framebuffer.size.x as f32) / (self.framebuffer.size.y as f32);
-        let win_aspect = (self.core.r.get().s.x as f32) / (self.core.r.get().s.y as f32);
+        let fb_aspect = (self.framebuffer.size.x() as f32) / (self.framebuffer.size.y() as f32);
+        let win_aspect = (self.core.r.get().sx() as f32) / (self.core.r.get().sy() as f32);
         let scale = if win_aspect > fb_aspect {
-            vec2!(fb_aspect / win_aspect,1.0)
+            vec2!(f32: fb_aspect / win_aspect,1.0)
         }
         else {
-            vec2!(1.0,win_aspect / fb_aspect)
+            vec2!(f32: 1.0,win_aspect / fb_aspect)
         };
         self.graphics.bind_target(&*self.framebuffer);
         for layer in layers.iter() {

@@ -24,14 +24,14 @@ impl MapLayer {
             Ok(framebuffer) => framebuffer,
             Err(_) => { return Err(EngineError::Generic); },
         });
-        let atlas_texture = Rc::new(gpu::Texture2D::<pixel::ARGB8>::new(&engine.graphics,vec2!(64usize,64usize)).expect("Unable to create atlas texture."));
-        let map_texture = Rc::new(gpu::Texture2D::<u32>::new(&engine.graphics,vec2!(256usize,256usize)).expect("Unable to create map texture."));
+        let atlas_texture = Rc::new(gpu::Texture2D::<pixel::ARGB8>::new(&engine.graphics,vec2!(usize: 64,64)).expect("Unable to create atlas texture."));
+        let map_texture = Rc::new(gpu::Texture2D::<u32>::new(&engine.graphics,vec2!(usize: 256,256)).expect("Unable to create map texture."));
         Ok(MapLayer {
             engine: Rc::clone(engine),
             framebuffer: framebuffer,
             atlas_texture: RefCell::new(atlas_texture),
             map_texture: RefCell::new(map_texture),
-            offset: Cell::new(vec2!(0.0f32,0.0f32)),
+            offset: Cell::new(vec2!(f32: 0.0,0.0)),
         })
     }
 
@@ -57,9 +57,9 @@ impl Layer for MapLayer {
         self.engine.graphics.bind_texture(1,&**(self.map_texture.borrow()));
         self.engine.graphics.set_uniform("map_texture",1);
         self.engine.graphics.set_uniform("offset",self.offset.get());
-        self.engine.graphics.set_uniform("tiles_per_pixel",vec2!(0.125 as f32,0.125 as f32));
-        self.engine.graphics.set_uniform("pixels_per_layer",vec2!(self.framebuffer.size.x as f32,self.framebuffer.size.y as f32));
-        self.engine.graphics.set_uniform("maps_per_tile",vec2!(0.25 as f32,0.25 as f32));
+        self.engine.graphics.set_uniform("tiles_per_pixel",vec2!(f32: 0.125,0.125));
+        self.engine.graphics.set_uniform("pixels_per_layer",vec2!(f32: self.framebuffer.size.x() as f32,self.framebuffer.size.y() as f32));
+        self.engine.graphics.set_uniform("maps_per_tile",vec2!(f32: 0.25,0.25));
         self.engine.graphics.bind_vertexbuffer(&self.engine.quad_vertexbuffer);
         self.engine.graphics.draw_triangle_fan(4);            
     }
