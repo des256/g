@@ -18,33 +18,33 @@ fn main() {
     let graphics = Rc::new(gpu::Graphics::new(&system).expect("Cannot open graphics."));
 
     // create game engine
-    let engine = Rc::new(Engine::new(&system,&graphics,vec2!(usize: 1024,576),vec2!(usize: 256,144)).expect("Cannot open engine."));
+    let engine = Rc::new(Engine::new(&system,&graphics,vec2!(1024,576),vec2!(256,144)).expect("Cannot open engine."));
     
     // create map layer for game engine
     let layer = Rc::new(MapLayer::new(&engine).expect("cannot create layer"));
 
     // load atlas texture
-    let atlas_mat = image::load::<pixel::ARGB8>("try/8x8tiles.png").expect("unable to load tiles");
+    let atlas_mat = imageformats::load::<pixel::ARGB8>("try/8x8tiles.png").expect("unable to load tiles");
     layer.set_atlas_from_mat(atlas_mat);
 
     // create map texture
-    let mut map = Mat::<u32>::new(vec2!(usize: 4,4));
-    map.set(vec2!(usize: 0,0),1);
-    map.set(vec2!(usize: 1,0),1);
-    map.set(vec2!(usize: 2,0),1);
-    map.set(vec2!(usize: 3,0),0);
-    map.set(vec2!(usize: 0,1),1);
-    map.set(vec2!(usize: 1,1),3);
-    map.set(vec2!(usize: 2,1),1);
-    map.set(vec2!(usize: 3,1),0);
-    map.set(vec2!(usize: 0,2),1);
-    map.set(vec2!(usize: 1,2),1);
-    map.set(vec2!(usize: 2,2),1);
-    map.set(vec2!(usize: 3,2),0);
-    map.set(vec2!(usize: 0,3),2);
-    map.set(vec2!(usize: 1,3),2);
-    map.set(vec2!(usize: 2,3),2);
-    map.set(vec2!(usize: 3,3),2);
+    let mut map = Mat::<u32>::new(vec2!(4,4));
+    map.set(vec2!(0,0),1);
+    map.set(vec2!(1,0),1);
+    map.set(vec2!(2,0),1);
+    map.set(vec2!(3,0),0);
+    map.set(vec2!(0,1),1);
+    map.set(vec2!(1,1),3);
+    map.set(vec2!(2,1),1);
+    map.set(vec2!(3,1),0);
+    map.set(vec2!(0,2),1);
+    map.set(vec2!(1,2),1);
+    map.set(vec2!(2,2),1);
+    map.set(vec2!(3,2),0);
+    map.set(vec2!(0,3),2);
+    map.set(vec2!(1,3),2);
+    map.set(vec2!(2,3),2);
+    map.set(vec2!(3,3),2);
     layer.set_map_from_mat(map);
 
     // create layer collection
@@ -52,7 +52,7 @@ fn main() {
     
     // main loop
     let time = Instant::now();
-    let mut prev_frame_us = 1;
+    let mut prev_frame_us = 0;
     
     while engine.is_running() {
         let frame_us = time.elapsed().as_micros();

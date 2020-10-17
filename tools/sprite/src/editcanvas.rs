@@ -1,18 +1,17 @@
 // G Sprite Editor - Editor Canvas
 // by Desmond Germans, 2020
 
-use e::*;
+use crate::*;
 use std::{
     rc::Rc,
     cell::Cell,
 };
 
-use crate::document::*;
-
 const SCALE_GROW: f32 = 1.1;
 
 pub struct EditCanvas {
-    core: ui::Core<Box<dyn ui::Widget>>,
+    ui: Rc<e::UI>,
+    r: Cell<Rect<i32>>,
     background_grid_shader: gpu::Shader,
     layer_shader: gpu::Shader,
     pixel_grid_shader: gpu::Shader,
@@ -22,7 +21,7 @@ pub struct EditCanvas {
 }
 
 impl EditCanvas {
-    pub fn new(state: &Rc<ui::UIState>,document: &Rc<Document>) -> Result<EditCanvas,SystemError> {
+    pub fn new(ui: &Rc<e::UI>,document: &Rc<Document>) -> Result<EditCanvas,SystemError> {
 
         // vertex shader
         let vs = r#"
@@ -77,7 +76,7 @@ impl EditCanvas {
                 o = b?vec4(0.3,0.3,0.3,1.0):vec4(0.5,0.5,0.5,1.0);
             }
         "#;
-        let background_grid_shader = gpu::Shader::new(&state.graphics,vs,None,background_grid_fs).expect("Unable to create background grid shader.");
+        let background_grid_shader = gpu::Shader::new(&ui.graphics,vs,None,background_grid_fs).expect("Unable to create background grid shader.");
 
         // create layer shader
         let layer_fs = r#"
@@ -98,7 +97,7 @@ impl EditCanvas {
                 o = texture(layer_texture,tc);
             }
         "#;
-        let layer_shader = gpu::Shader::new(&state.graphics,vs,None,layer_fs).expect("Unable to create layer shader.");
+        let layer_shader = gpu::Shader::new(&ui.graphics,vs,None,layer_fs).expect("Unable to create layer shader.");
 
         // create selection shader
         let selection_fs = r#"
@@ -114,7 +113,7 @@ impl EditCanvas {
                 o = vec4(1.0,0.0,0.0,1.0);
             }
         "#;
-        let selection_shader = gpu::Shader::new(&state.graphics,vs,None,selection_fs).expect("Unable to create selection shader.");
+        let selection_shader = gpu::Shader::new(&ui.graphics,vs,None,selection_fs).expect("Unable to create selection shader.");
 
         // create pixel grid shader
         let pixel_grid_fs = r#"
@@ -135,10 +134,11 @@ impl EditCanvas {
                 o = vec4(0.0,0.0,0.0,a.x + a.y);
             }
         "#;
-        let pixel_grid_shader = gpu::Shader::new(&state.graphics,vs,None,pixel_grid_fs).expect("Unable to create pixel grid shader.");
+        let pixel_grid_shader = gpu::Shader::new(&ui.graphics,vs,None,pixel_grid_fs).expect("Unable to create pixel grid shader.");
 
         Ok(EditCanvas {
-            core: ui::Core::new(state),
+            ui: Rc::clone(ui),
+            r: Cell::new(rect!(0,0,0,0)),
             background_grid_shader: background_grid_shader,
             layer_shader: layer_shader,
             selection_shader: selection_shader,
@@ -152,106 +152,114 @@ impl EditCanvas {
         let offset = self.document.offset.get();
         let scale = self.document.scale.get();
         let background_grid_size = self.document.background_grid_size.get();
-        self.core.state.graphics.bind_shader(&self.background_grid_shader);
-        self.core.state.graphics.bind_vertexbuffer(&self.core.state.rect_vb);
-        self.core.state.graphics.set_uniform("tows",self.core.state.two_over_current_window_size.get());
-        let r = self.core.r.get();
-        self.core.state.graphics.set_uniform("rect",vec4!((r.o.x + context.x) as f32,(r.o.y + context.y) as f32,r.s.x as f32,r.s.y as f32));
-        self.core.state.graphics.set_uniform("offset",offset);
-        self.core.state.graphics.set_uniform("scale",scale);
-        self.core.state.graphics.set_uniform("background_grid_size",vec2!(background_grid_size.x as f32,background_grid_size.y as f32));
-        self.core.state.graphics.draw_instanced_triangle_fan(4,1);
+        self.ui.graphics.bind_shader(&self.background_grid_shader);
+        self.ui.graphics.bind_vertexbuffer(&self.ui.rect_vb);
+        self.ui.graphics.set_uniform("tows",self.ui.two_over_window_size.get());
+        let r = self.r.get();
+        self.ui.graphics.set_uniform("rect",vec4!((r.o.x + context.x) as f32,(r.o.y + context.y) as f32,r.s.x as f32,r.s.y as f32));
+        self.ui.graphics.set_uniform("offset",offset);
+        self.ui.graphics.set_uniform("scale",scale);
+        self.ui.graphics.set_uniform("background_grid_size",vec2!(background_grid_size.x as f32,background_grid_size.y as f32));
+        self.ui.graphics.draw_instanced_triangle_fan(4,1);
     }
 
-    pub fn draw_layer(&self,context: Vec2<i32>,layer: &Layer) {
+    pub fn draw_layer(&self,layer: &Layer) {
         let offset = self.document.offset.get();
         let scale = self.document.scale.get();
-        self.core.state.graphics.bind_shader(&self.layer_shader);
-        self.core.state.graphics.bind_vertexbuffer(&self.core.state.rect_vb);
-        self.core.state.graphics.bind_texture(0,&layer.texture);
-        self.core.state.graphics.set_uniform("layer_texture",0);
-        self.core.state.graphics.set_uniform("tows",self.core.state.two_over_current_window_size.get());
-        let r = self.core.r.get();
-        self.core.state.graphics.set_uniform("rect",vec4!((r.o.x + context.x) as f32,(r.o.y + context.y) as f32,r.s.x as f32,r.s.y as f32));
-        self.core.state.graphics.set_uniform("offset",offset);
-        self.core.state.graphics.set_uniform("scale",scale);
-        self.core.state.graphics.set_uniform("image_size",vec2!(layer.texture.size.x as f32,layer.texture.size.y as f32));
-        self.core.state.graphics.draw_instanced_triangle_fan(4,1);
+        self.ui.graphics.bind_shader(&self.layer_shader);
+        self.ui.graphics.bind_vertexbuffer(&self.ui.rect_vb);
+        self.ui.graphics.bind_texture(0,&layer.texture);
+        self.ui.graphics.set_uniform("layer_texture",0);
+        self.ui.graphics.set_uniform("tows",self.ui.two_over_window_size.get());
+        let r = self.r.get();
+        self.ui.graphics.set_uniform("rect",vec4!(r.o.x as f32,r.o.y as f32,r.s.x as f32,r.s.y as f32));
+        self.ui.graphics.set_uniform("offset",offset);
+        self.ui.graphics.set_uniform("scale",scale);
+        self.ui.graphics.set_uniform("image_size",vec2!(layer.texture.size.x as f32,layer.texture.size.y as f32));
+        self.ui.graphics.draw_instanced_triangle_fan(4,1);
     }
 
-    pub fn draw_selection(&self,context: Vec2<i32>,selection: &Selection) {
+    pub fn draw_selection(&self,selection: &Selection) {
         let offset = self.document.offset.get();
         let scale = self.document.scale.get();
-        self.core.state.graphics.bind_shader(&self.selection_shader);
-        self.core.state.graphics.bind_vertexbuffer(&self.core.state.rect_vb);
-        self.core.state.graphics.bind_texture(0,&selection.texture);
-        self.core.state.graphics.set_uniform("selection_texture",0);
-        self.core.state.graphics.set_uniform("tows",self.core.state.two_over_current_window_size.get());
-        let r = self.core.r.get();
-        self.core.state.graphics.set_uniform("rect",vec4!((r.o.x + context.x) as f32,(r.o.y + context.y) as f32,r.s.x as f32,r.s.y as f32));
-        self.core.state.graphics.set_uniform("offset",offset);
-        self.core.state.graphics.set_uniform("scale",scale);
-        //self.core.state.graphics.draw_instanced_triangle_fan(4,1);
+        self.ui.graphics.bind_shader(&self.selection_shader);
+        self.ui.graphics.bind_vertexbuffer(&self.ui.rect_vb);
+        self.ui.graphics.bind_texture(0,&selection.texture);
+        self.ui.graphics.set_uniform("selection_texture",0);
+        self.ui.graphics.set_uniform("tows",self.ui.two_over_window_size.get());
+        let r = self.r.get();
+        self.ui.graphics.set_uniform("rect",vec4!(r.o.x as f32,r.o.y as f32,r.s.x as f32,r.s.y as f32));
+        self.ui.graphics.set_uniform("offset",offset);
+        self.ui.graphics.set_uniform("scale",scale);
+        //self.ui.graphics.draw_instanced_triangle_fan(4,1);
     }
 
-    pub fn draw_pixel_grid(&self,context: Vec2<i32>) {
+    pub fn draw_pixel_grid(&self) {
         let offset = self.document.offset.get();
         let scale = self.document.scale.get();
-        self.core.state.graphics.bind_shader(&self.pixel_grid_shader);
-        self.core.state.graphics.bind_vertexbuffer(&self.core.state.rect_vb);
-        self.core.state.graphics.set_uniform("tows",self.core.state.two_over_current_window_size.get());
-        let r = self.core.r.get();
-        self.core.state.graphics.set_uniform("rect",vec4!((r.o.x + context.x) as f32,(r.o.y + context.y) as f32,r.s.x as f32,r.s.y as f32));
-        self.core.state.graphics.set_uniform("offset",offset);
-        self.core.state.graphics.set_uniform("scale",scale);
-        self.core.state.graphics.draw_instanced_triangle_fan(4,1);
+        self.ui.graphics.bind_shader(&self.pixel_grid_shader);
+        self.ui.graphics.bind_vertexbuffer(&self.ui.rect_vb);
+        self.ui.graphics.set_uniform("tows",self.ui.two_over_window_size.get());
+        let r = self.r.get();
+        self.ui.graphics.set_uniform("rect",vec4!(r.o.x as f32,r.o.y as f32,r.s.x as f32,r.s.y as f32));
+        self.ui.graphics.set_uniform("offset",offset);
+        self.ui.graphics.set_uniform("scale",scale);
+        self.ui.graphics.draw_instanced_triangle_fan(4,1);
     }
 }
 
 impl ui::Widget for EditCanvas {
-    fn get_rect(&self) -> Rect<i32> {
-        self.core.r.get()
+    fn rect(&self) -> Rect<i32> {
+        self.r.get()
     }
 
     fn set_rect(&self,r: Rect<i32>) {
-        self.core.r.set(r);
+        self.r.set(r);
     }
 
     fn calc_min_size(&self) -> Vec2<i32> {
         vec2!(1280,640)
     }
 
-    fn draw(&self,context: Vec2<i32>) {
+    fn draw(&self) {
         let scale = self.document.scale.get();
-        self.core.state.graphics.set_blend(gpu::BlendMode::Replace);
-        self.draw_background_grid(context);
+        self.ui.graphics.set_blend(gpu::BlendMode::Replace);
+        self.draw_background_grid(self.ui.offset.get());
         for layer in self.document.layers.iter() {
-            self.core.state.graphics.set_blend(layer.blend_mode);
-            self.draw_layer(context,&layer);
+            self.ui.graphics.set_blend(layer.blend_mode);
+            self.draw_layer(&layer);
         }
-        self.core.state.graphics.set_blend(gpu::BlendMode::Over);
-        self.draw_selection(context,&self.document.selection);
+        self.ui.graphics.set_blend(gpu::BlendMode::Over);
+        self.draw_selection(&self.document.selection);
         if (scale.x > 8.0) || (scale.y > 8.0) {
-            self.draw_pixel_grid(context);
+            self.draw_pixel_grid();
         }
     }
 
-    fn handle_mouse_press(&self,_p: Vec2<i32>,_b: MouseButton) {
+    fn keypress(&self,_ui: &e::UI,_window: &Rc<e::UIWindow>,_k: u8) {
 
     }
 
-    fn handle_mouse_release(&self,_p: Vec2<i32>,_b: MouseButton) {
+    fn keyrelease(&self,_ui: &e::UI,_window: &Rc<e::UIWindow>,_k: u8) {
 
     }
 
-    fn handle_mouse_move(&self,p: Vec2<i32>) -> bool {
+    fn mousepress(&self,_ui: &e::UI,_window: &Rc<e::UIWindow>,_p: Vec2<i32>,_b: e::MouseButton) -> bool {
+        false
+    }
+
+    fn mouserelease(&self,_ui: &e::UI,_window: &Rc<e::UIWindow>,_p: Vec2<i32>,_b: e::MouseButton) -> bool {
+        false
+    }
+
+    fn mousemove(&self,_ui: &e::UI,_window: &Rc<e::UIWindow>,p: Vec2<i32>) -> bool {
         self.mouse.set(p);
         false
     }
 
-    fn handle_mouse_wheel(&self,w: MouseWheel) {
+    fn mousewheel(&self,_ui: &e::UI,_window: &Rc<e::UIWindow>,w: e::MouseWheel) -> bool {
         match w {
-            MouseWheel::Up => {
+            e::MouseWheel::Up => {
                 let mut offset = self.document.offset.get();
                 let mut scale = self.document.scale.get();
                 let mouse = self.mouse.get();
@@ -260,9 +268,8 @@ impl ui::Widget for EditCanvas {
                 offset -= vec2!((mouse.x as f32) / scale.x,(mouse.y as f32) / scale.y);
                 self.document.offset.set(offset);
                 self.document.scale.set(scale);
-                self.core.state.invalidate();
             },
-            MouseWheel::Down => {
+            e::MouseWheel::Down => {
                 let mut offset = self.document.offset.get();
                 let mut scale = self.document.scale.get();
                 let mouse = self.mouse.get();
@@ -271,9 +278,9 @@ impl ui::Widget for EditCanvas {
                 offset -= vec2!((mouse.x as f32) / scale.x,(mouse.y as f32) / scale.y);
                 self.document.offset.set(offset);
                 self.document.scale.set(scale);
-                self.core.state.invalidate();
             },
             _ => { },
         }
+        false
     }
 }

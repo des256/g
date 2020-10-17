@@ -18,14 +18,14 @@ fn main() {
     let graphics = Rc::new(gpu::Graphics::new(&system).expect("Cannot open graphics."));
 
     // create game engine
-    let engine = Rc::new(Engine::new(&system,&graphics,vec2!(usize: 1024,576),vec2!(usize: 256,144)).expect("Cannot open engine."));
+    let engine = Rc::new(Engine::new(&system,&graphics,vec2!(1024,576),vec2!(256,144)).expect("Cannot open engine."));
 
     // create layer collection
     let layers: Vec<Rc<dyn Layer>> = Vec::new();
 
     // main loop
     let time = Instant::now();
-    let mut prev_frame_us = 1;
+    let mut prev_frame_us = 0;
 
     while engine.is_running() {
         let frame_us = time.elapsed().as_micros();

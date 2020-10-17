@@ -1,7 +1,0 @@
-# TODO NOW
-
-# TODO LATER
-
-# TODO REFACTOR
-
-# DONE

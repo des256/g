@@ -17,6 +17,10 @@ lto = false
 codegen-units = 14
 
 [dependencies]
-e = { path = "../../../e" }
+base = { path = "../../../e/base" }
+platform = { path = "../../../e/platform" }
+gpu = { path = "../../../e/gpu" }
+imageformats = { path = "../../../e/imageformats" }
+ui = { path = "../../../e/ui" }
 g = { path = "../.." }
-gl = { version = "0.14.0" }
+#gl = { version = "0.14.0" }

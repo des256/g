@@ -1,65 +1,70 @@
 // G Sprite Editor - Main Application
 // by Desmond Germans, 2020
 
-use e::*;
+use crate::*;
 use std::{
     rc::Rc,
 };
 
-use crate::document::*;
-use crate::editcanvas::*;
-
 pub struct Application {
-    _uistate: Rc<ui::UIState>,
+    _ui: Rc<e::UI>,
     edit_canvas: EditCanvas,
     // needs collection of open documents with associated edit_canvases in the book
 }
 
 impl Application {
-    pub fn new(state: &Rc<ui::UIState>) -> Result<Application,SystemError> {
-        let mat = image::load::<pixel::ARGB8>("test.png").expect("Unable to open test.png");
-        let document = Rc::new(Document::new(&state.graphics,mat.size));
+    pub fn new(ui: &Rc<e::UI>) -> Result<Application,SystemError> {
+        let mat = e::load::<pixel::ARGB8>("test.png").expect("Unable to open test.png");
+        let document = Rc::new(Document::new(&ui.graphics,mat.size));
         document.layers[0].texture.load(vec2!(0,0),&mat);
-        let edit_canvas = EditCanvas::new(state,&document)?;
+        let edit_canvas = EditCanvas::new(&ui,&document)?;
 
         Ok(Application {
-            _uistate: Rc::clone(state),
+            _ui: Rc::clone(ui),
             edit_canvas: edit_canvas,
         })
     }
 }
 
 impl ui::Widget for Application {
-    fn get_rect(&self) -> Rect<i32> {
-        self.edit_canvas.get_rect()
+    fn rect(&self) -> Rect<i32> {
+        self.edit_canvas.rect()
     }
 
     fn set_rect(&self,r: Rect<i32>) {
-        self.edit_canvas.set_rect(r)
+        self.edit_canvas.set_rect(r);
     }
 
     fn calc_min_size(&self) -> Vec2<i32> {
         self.edit_canvas.calc_min_size()
     }
 
-    fn draw(&self,context: Vec2<i32>) {
-        self.edit_canvas.draw(context);
+    fn draw(&self) {
+        self.edit_canvas.draw();
     }
 
-    fn handle_mouse_press(&self,p: Vec2<i32>,b: MouseButton) {
-        self.edit_canvas.handle_mouse_press(p,b);
+    fn keypress(&self,ui: &e::UI,window: &Rc<e::UIWindow>,k: u8) {
+        self.edit_canvas.keypress(ui,window,k);
     }
 
-    fn handle_mouse_release(&self,p: Vec2<i32>,b: MouseButton) {
-        self.edit_canvas.handle_mouse_release(p,b);
+    fn keyrelease(&self,ui: &e::UI,window: &Rc<e::UIWindow>,k: u8) {
+        self.edit_canvas.keyrelease(ui,window,k);
     }
 
-    fn handle_mouse_move(&self,p: Vec2<i32>) -> bool {
-        self.edit_canvas.handle_mouse_move(p)
+    fn mousepress(&self,ui: &e::UI,window: &Rc<e::UIWindow>,p: Vec2<i32>,b: e::MouseButton) -> bool {
+        self.edit_canvas.mousepress(ui,window,p,b)
     }
 
-    fn handle_mouse_wheel(&self,w: MouseWheel) {
-        self.edit_canvas.handle_mouse_wheel(w)
+    fn mouserelease(&self,ui: &e::UI,window: &Rc<e::UIWindow>,p: Vec2<i32>,b: e::MouseButton) -> bool {
+        self.edit_canvas.mouserelease(ui,window,p,b)
+    }
+
+    fn mousemove(&self,ui: &e::UI,window: &Rc<e::UIWindow>,p: Vec2<i32>) -> bool {
+        self.edit_canvas.mousemove(ui,window,p)
+    }
+
+    fn mousewheel(&self,ui: &e::UI,window: &Rc<e::UIWindow>,w: e::MouseWheel) -> bool {
+        self.edit_canvas.mousewheel(ui,window,w)
     }
 }
 

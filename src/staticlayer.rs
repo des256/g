@@ -6,16 +6,13 @@ use std::rc::Rc;
 
 pub struct StaticLayer {
     pub(crate) _engine: Rc<Engine>,
-    pub(crate) framebuffer: Rc<gpu::Framebuffer>,
+    pub(crate) framebuffer: Rc<e::Framebuffer>,
 }
 
 impl StaticLayer {
     pub fn new_from_mat(engine: &Rc<Engine>,image: Mat<pixel::ARGB8>) -> Result<StaticLayer,EngineError> {
-        let framebuffer = Rc::new(match gpu::Framebuffer::new(&engine.graphics,engine.framebuffer.size) {
-            Ok(framebuffer) => framebuffer,
-            Err(_) => { return Err(EngineError::Generic); },
-        });
-        let texture = gpu::Texture2D::new_from_mat(&engine.graphics,image).expect("unable to load texture");
+        let framebuffer = Rc::new(e::Framebuffer::new(&engine.graphics,engine.framebuffer.size).expect("StaticLayer::new_from_mat: Unable to create framebuffer."));
+        let texture = e::Texture2D::new_from_mat(&engine.graphics,image).expect("StaticLayer::new_from_mat: Unabel to create texture.");
         engine.graphics.bind_target(&*framebuffer);
         engine.graphics.clear(0xFFFFFF00);
         engine.graphics.bind_texture(0,&texture);

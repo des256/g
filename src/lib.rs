@@ -1,7 +1,12 @@
 // G
 // Desmond Germans, 2020
 
-use e::*;
+pub use base::*;
+pub mod e {
+    pub use platform::*;
+    pub use gpu::*;
+    pub use imageformats::*;
+}
 
 pub trait Layer {
     fn framebuffer(&self) -> &gpu::Framebuffer;
